@@ -1,7 +1,7 @@
 // Screens. Every screen rebuilds #app from scratch through show().
 const root = document.getElementById('app');
 const langCodes = LANGUAGES.map((l) => l.code);
-const knownIds = new Set(ITEMS.map((it) => it.id));
+const knownIds = new Set([...ITEMS, ...AMZ_ITEMS].map((it) => it.id));
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -11,7 +11,7 @@ function h(tag, attrs = {}, ...children) {
     else if (value === true) el.setAttribute(key, '');
     else if (value !== false && value != null) el.setAttribute(key, value);
   }
-  el.append(...children.flat().filter((c) => c != null));
+  el.append(...children.flat(Infinity).filter((c) => c != null));
   return el;
 }
 
@@ -47,6 +47,7 @@ function pair(key, code = lang()) {
 
 // The student's own correction wins over the built-in translation.
 function itemText(item) {
+  if (item.own) return { text: item.l1, code: item.lang };
   const fix = Store.profile.fixes[`${lang()}:${item.id}`];
   return fix ? { text: fix, code: lang() } : pickText(item.t);
 }
@@ -64,7 +65,29 @@ function icon(key, tag = 'span', className = 'ico') {
   return el;
 }
 
+// A thick yellow arrow with a dark edge, so it shows on light and dark parts of a photo.
+function arrowSvg([x1, y1, x2, y2]) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const [dx, dy] = [(x2 - x1) / len, (y2 - y1) / len];
+  const [bx, by] = [x2 - dx * 55, y2 - dy * 55];
+  const head = [[x2, y2], [bx - dy * 38, by + dx * 38], [bx + dy * 38, by - dx * 38]].map((pt) => pt.map(Math.round).join(',')).join(' ');
+  return `<line x1="${x1}" y1="${y1}" x2="${bx}" y2="${by}" class="arrow-edge"/><line x1="${x1}" y1="${y1}" x2="${bx}" y2="${by}" class="arrow"/><polygon points="${head}" class="arrow-tip"/>`;
+}
+
+// A photo at its own proportions, so arrows drawn in its pixels stay on target.
+function photo(p) {
+  const el = h('span', { class: 'photo' }, h('img', { src: p.src, alt: '', width: p.w, height: p.h, loading: 'lazy' }));
+  if (p.arrows) el.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 ${p.w} ${p.h}" aria-hidden="true">${p.arrows.map(arrowSvg).join('')}</svg>`);
+  return el;
+}
+
+// Words with photos show both photos when large, and the clearer second one when small.
 function picture(item, size = '') {
+  if (item.photos) {
+    const shown = size ? item.photos : item.photos.slice(-1);
+    return h('div', { class: `pic photos ${size}`, 'aria-hidden': 'true' }, shown.map(photo));
+  }
+  if (!item.pic) return null;
   return icon(item.pic, 'div', `pic ${size}`);
 }
 
@@ -87,7 +110,7 @@ function editToggle(refresh, corner = false) {
 }
 
 function editableL1(item, refresh) {
-  if (!editMode) return itemL1(item);
+  if (!editMode || item.own) return itemL1(item);
   return h('button', { class: 'editable', onclick: () => openFix(item, refresh) }, itemL1(item));
 }
 
@@ -103,6 +126,7 @@ function openFix(item, refresh) {
     germanWord(item),
     h('p', { class: 'stack help' }, pair('fixHelp')),
     field,
+    screenKeyboard(field, code),
     h('div', { class: 'fix-actions' },
       h('button', { class: 'choice stack', onclick: close }, pair('cancel')),
       h('button', {
@@ -127,6 +151,10 @@ function audioButtons(text) {
   return h('div', { class: 'audio' },
     h('button', { class: 'round', 'aria-label': STRINGS.speak.de, title: STRINGS.speak.de, onclick: () => Speech.say(text) }, icon('🔊')),
     h('button', { class: 'round', 'aria-label': STRINGS.speakSlow.de, title: STRINGS.speakSlow.de, onclick: () => Speech.say(text, 'de', 0.55) }, icon('🐢')));
+}
+
+function ownItems() {
+  return Store.profile.own.map(ownItem);
 }
 
 function topicItems(id) {
@@ -183,7 +211,7 @@ function renderChooseAnimal(code) {
 function renderHome() {
   editMode = false;
   const records = Store.profile.items;
-  const plan = planSession(ITEMS, records, dayNumber());
+  const plan = planSession(ITEMS.concat(AMZ_ITEMS, ownItems()), records, dayNumber());
   const learned = countLearned(records);
 
   show(h('main', { class: 'page' },
@@ -208,6 +236,14 @@ function renderHome() {
         h('span', { class: 'stack' }, pair(def.title)),
         h('span', { class: 'meter', role: 'img', 'aria-label': `${share} %` }, h('span', { style: `width:${share}%` })));
     }),
+    h('button', { class: 'course-link', onclick: renderAmazonia },
+      icon('🏺', 'span', 'topic-icon'),
+      h('span', { class: 'stack' }, pair('amzTitle')),
+      h('span', { class: 'meter', role: 'img', 'aria-label': `${amzShare()} %` }, h('span', { style: `width:${amzShare()}%` }))),
+    h('button', { class: 'course-link', onclick: () => renderOwnWords() },
+      icon('📝', 'span', 'topic-icon'),
+      h('span', { class: 'stack' }, pair('myWords')),
+      Store.profile.own.length ? h('span', { class: 'own-count' }, String(Store.profile.own.length)) : null),
     h('h2', { class: 'stack' }, pair('grammar')),
     h('div', { class: 'topics' }, GRAMMAR.map((lesson) => h('button', {
       class: 'topic', onclick: () => renderGrammar(lesson, 0, renderHome),
@@ -279,6 +315,54 @@ function renderTopic(topic) {
       }, icon('🔊')) : null)))));
 }
 
+// The student's own words: a form to add them, the list, and the same practice as a topic.
+function renderOwnWords() {
+  const code = lang();
+  const items = ownItems();
+  const records = Store.profile.items;
+  const field = (key, fieldLang, dir) => {
+    const input = h('input', {
+      type: 'text', class: 'answer', lang: fieldLang, dir, autocomplete: 'off', spellcheck: 'false',
+      required: true, maxlength: MAX_OWN_LENGTH, 'aria-label': STRINGS[key].de,
+    });
+    return { input, row: h('div', { class: 'field' }, h('label', { class: 'stack' }, pair(key), input), screenKeyboard(input, fieldLang)) };
+  };
+  const german = field('inGerman', 'de', 'ltr');
+  const own = field('inMyLanguage', code, langInfo(code).dir);
+  show(h('main', { class: 'page' },
+    h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderHome }, '← ', STRINGS.back.de), null),
+    icon('📝', 'div', 'pic big'),
+    h('h1', { class: 'stack' }, pair('myWords')),
+    h('form', {
+      class: 'own-form card',
+      onsubmit: (e) => {
+        e.preventDefault();
+        if (!german.input.value.trim() || !own.input.value.trim()) return;
+        Store.addOwnWord(german.input.value, own.input.value);
+        renderOwnWords();
+        root.querySelector('.own-form input').focus();
+      },
+    },
+      h('p', { class: 'stack help' }, pair('myWordsHelp')),
+      german.row,
+      own.row,
+      h('button', { type: 'submit', class: 'primary wide stack' }, pair('addWord'))),
+    items.length ? [
+      h('button', { class: 'primary wide stack', onclick: () => startSession(topicPlan(items, records)) }, pair('practice')),
+      items.some(isTypable) ? h('button', { class: 'choice stack center', onclick: () => startWriting(items) }, pair('writing')) : null,
+    ] : h('p', { class: 'stack help center' }, pair('noWordsYet')),
+    h('ul', { class: 'wordlist own-list' }, [...items].reverse().map((it) => h('li', {},
+      h('span', { class: 'stack' }, germanWord(it), itemL1(it)),
+      h('span', { class: 'own-actions' },
+        Speech.has('de') ? h('button', {
+          class: 'round', 'aria-label': `${STRINGS.speak.de}: ${fullGerman(it)}`, onclick: () => Speech.say(fullGerman(it)),
+        }, icon('🔊')) : null,
+        h('button', {
+          class: 'round', 'aria-label': `${STRINGS.removeWord.de}: ${fullGerman(it)}`, title: STRINGS.removeWord.de,
+          onclick: () => { Store.removeOwnWord(it.id); renderOwnWords(); },
+        }, '🗑')))))));
+}
+
 function topicPlan(items, records) {
   const plan = planSession(items, records, dayNumber());
   return plan.length ? plan : planPractice(items, records);
@@ -288,15 +372,17 @@ function topicPlan(items, records) {
 
 let session = null;
 
-function startSession(items) {
+// `back` is where the session ends and where ✕ leads.
+function startSession(items, back = renderHome) {
   // Every student meets the rules before their first nouns.
   const unseen = GRAMMAR.find((lesson) => !Store.profile.grammar[lesson.id]);
-  if (unseen && items.some((it) => it.art)) return renderGrammar(unseen, 0, () => startSession(items));
+  if (unseen && items.some((it) => it.art)) return renderGrammar(unseen, 0, () => startSession(items, back));
   session = {
     queue: items.map((item) => ({ item, retry: false, introduced: false })),
     index: 0,
     first: items.length,
     right: 0,
+    back,
   };
   nextStep();
 }
@@ -305,13 +391,13 @@ function startSession(items) {
 // steps do not move words between boxes: one word appears several times here.
 const WRITING_WORDS = 3;
 
-function startWriting(items) {
+function startWriting(items, back = renderHome) {
   const records = Store.profile.items;
   const words = planPractice(items.filter(isTypable), records, WRITING_WORDS);
   const queue = WRITING_LEVELS.flatMap((level, i) => shuffle(words).map((item) => ({
     item, level, retry: false, introduced: i > 0 || !!records[item.id], ungraded: true,
   })));
-  session = { queue, index: 0, first: queue.length, right: 0 };
+  session = { queue, index: 0, first: queue.length, right: 0, back };
   nextStep();
 }
 
@@ -319,7 +405,7 @@ function sessionFrame(...content) {
   const done = session.index / session.queue.length;
   show(h('main', { class: 'page narrow session' },
     h('header', { class: 'session-bar' },
-      h('button', { class: 'round', 'aria-label': STRINGS.home.de, onclick: renderHome }, '✕'),
+      h('button', { class: 'round', 'aria-label': STRINGS.home.de, onclick: () => session.back() }, '✕'),
       h('span', { class: 'meter grow', role: 'img', 'aria-label': `${session.index + 1} / ${session.queue.length}` },
         h('span', { style: `width:${Math.round(done * 100)}%` }))),
     content));
@@ -355,7 +441,7 @@ function renderIntro(step) {
   sessionFrame(
     h('p', { class: 'tag stack' }, pair('newWord')),
     h('div', { class: 'card' },
-      editToggle(refresh, true),
+      item.own ? null : editToggle(refresh, true),
       picture(item, 'huge'),
       germanWord(item),
       editableL1(item, refresh)),
@@ -383,7 +469,7 @@ function renderFeedback(step, correct, given) {
   const refresh = () => renderFeedback(step, correct, given);
   sessionFrame(
     h('div', { class: `feedback ${correct ? 'good' : 'again'}`, role: 'status' },
-      editToggle(refresh, true),
+      item.own ? null : editToggle(refresh, true),
       verdict(correct, given),
       picture(item, 'big'),
       germanWord(item),
@@ -399,7 +485,8 @@ function renderChoice(step, type) {
   const toGerman = type === 'pickDe';
   const pictures = !toGerman && !item.abstract;
   const label = toGerman ? fullGerman : pictures ? (it) => it.pic : (it) => itemText(it).text;
-  const pool = ITEMS.filter((it) => !pictures || !it.abstract);
+  // Own words are asked among each other first; course words fill up short lists.
+  const pool = (item.own ? ownItems() : item.topic === 'amazonia' ? AMZ_ITEMS : []).concat(ITEMS).filter((it) => !pictures || !it.abstract);
   const options = makeOptions(item, pool, label);
 
   const prompt = {
@@ -598,7 +685,7 @@ function renderDone() {
       icon(Store.profile.animal, 'div', 'pic huge'),
       h('h1', { class: 'stack' }, pair('wellDone')),
       h('p', { class: 'score' }, `${session.right} / ${total} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount))),
-    h('button', { class: 'primary wide stack', onclick: renderHome }, pair('home'))));
+    h('button', { class: 'primary wide stack', onclick: () => session.back() }, pair(session.back === renderHome ? 'home' : 'next'))));
   root.querySelector('.primary').focus();
 }
 
@@ -991,6 +1078,233 @@ function renderStationDone() {
     passed ? null : h('button', { class: 'choice stack', onclick: () => startStation(station) }, pair('practice')),
     h('button', { class: 'primary wide stack', onclick: renderCourse }, pair('next'))));
   root.querySelector('.primary').focus();
+}
+
+// ---- Lerneinheit «Amazonien» (Museum Rietberg) ----
+
+const AMZ_STEPS = ['amzRead', 'amzWords', 'amzText', 'amzRepeat', 'amzMark'];
+
+// The words step is done once every word has been met in practice.
+function amzDone(step) {
+  if (step === 'amzWords') return AMZ_ITEMS.every((it) => Store.profile.items[it.id]);
+  return !!(Store.profile.units.amazonia || {})[step];
+}
+
+function amzFinish(step) {
+  Store.profile.units.amazonia = { ...Store.profile.units.amazonia, [step]: true };
+  Store.save();
+}
+
+function amzShare() {
+  return Math.round((AMZ_STEPS.filter(amzDone).length / AMZ_STEPS.length) * 100);
+}
+
+function amzPage(titleKey, ...content) {
+  show(h('main', { class: 'page narrow' },
+    h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderAmazonia }, '← ', STRINGS.back.de), null),
+    h('h1', { class: 'stack' }, pair(titleKey)),
+    content));
+}
+
+function amzNext(step) {
+  return h('button', { class: 'primary wide stack', onclick: () => { amzFinish(step); renderAmazonia(); } }, pair('next'));
+}
+
+function renderAmazonia() {
+  const next = AMZ_STEPS.find((step) => !amzDone(step));
+  const open = { amzRead: renderAmzRead, amzWords: renderAmzWords, amzText: renderAmzText, amzRepeat: renderAmzRules, amzMark: renderAmzMark };
+  show(h('main', { class: 'page narrow' },
+    h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderHome }, '← ', STRINGS.back.de), null),
+    icon('🏺', 'div', 'pic big'),
+    h('h1', { class: 'stack' }, pair('amzTitle')),
+    h('ol', { class: 'stations' }, AMZ_STEPS.map((step) => h('li', {}, h('button', {
+      class: `station${step === next ? ' next' : ''}`, onclick: () => open[step](),
+    },
+      h('span', { class: 'station-mark', 'aria-hidden': 'true' }, amzDone(step) ? '✓' : '○'),
+      h('span', { class: 'stack' }, pair(step)),
+      step === next ? h('span', { class: 'station-next stack' }, pair('continueHere')) : null)))),
+    h('button', { class: 'text-button center', onclick: renderAmzCredits }, 'Bildnachweis')));
+}
+
+// The licences ask for photographer and licence with every photo used.
+function renderAmzCredits() {
+  show(h('main', { class: 'page narrow' },
+    h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderAmazonia }, '← ', STRINGS.back.de), null),
+    h('h1', {}, 'Bildnachweis'),
+    h('p', { class: 'help' }, 'Alle Fotos stammen von Wikimedia Commons.'),
+    h('ul', { class: 'credits' }, AMZ_ITEMS.filter((it) => it.photos).flatMap((it) => it.photos.map((p) => h('li', {},
+      h('img', { src: p.src, alt: '', width: p.w, height: p.h, loading: 'lazy' }),
+      h('span', {},
+        h('strong', {}, fullGerman(it)), h('br'),
+        h('a', { href: p.page, target: '_blank', rel: 'noopener' }, p.title), h('br'),
+        `${p.artist} · `, p.licenseUrl ? h('a', { href: p.licenseUrl, target: '_blank', rel: 'noopener' }, p.license) : p.license,
+        p.arrows ? ' · Pfeile ergänzt' : null)))))));
+}
+
+function renderAmzRead() {
+  const { text, code } = pickText(AMZ_TEXT1);
+  amzPage('amzRead',
+    h('article', { class: 'card reading', lang: code, dir: langInfo(code).dir }, text.map((p) => h('p', {}, p))),
+    amzNext('amzRead'));
+}
+
+function renderAmzWords() {
+  const records = Store.profile.items;
+  amzPage('amzWords',
+    h('button', { class: 'primary wide stack', onclick: () => startSession(topicPlan(AMZ_ITEMS, records), renderAmzWords) }, pair('practice')),
+    h('button', { class: 'choice stack center', onclick: () => startWriting(AMZ_ITEMS, renderAmzWords) }, pair('writing')),
+    ['N', 'V', 'A'].map((cls) => [
+      h('h2', { class: 'stack' }, pair(AMZ_CLASS_KEYS[cls])),
+      h('ul', { class: 'wordlist' }, AMZ_ITEMS.filter((it) => it.wordClass === cls).map((it) => h('li', {},
+        picture(it),
+        h('span', { class: 'stack' }, germanWord(it), itemL1(it)),
+        Speech.has('de') ? h('button', {
+          class: 'round', 'aria-label': `${STRINGS.speak.de}: ${fullGerman(it)}`, onclick: () => Speech.say(fullGerman(it)),
+        }, icon('🔊')) : null))),
+    ]));
+}
+
+// The base form with its article in colour, and the translation of that base form.
+function glossTip(gloss) {
+  return h('span', { class: 'gl-tip' },
+    h('span', { class: 'gl-de', lang: 'de' },
+      gloss.art ? [h('span', { class: `art art-${gloss.art}` }, gloss.art), ' '] : null, gloss.de),
+    localized(gloss.t));
+}
+
+function renderAmzText() {
+  amzPage('amzText',
+    h('p', { class: 'stack help' }, pair('amzHover')),
+    audioButtons(AMZ_TEXT2.map(amzPlain).join(' ')),
+    h('article', { class: 'card reading', lang: 'de' }, AMZ_TEXT2.map((p) => h('p', {}, amzTokens(p).map((token) => {
+      if (token.text) return token.text;
+      if (!token.gloss) return token.word;
+      return h('span', { class: 'gl', tabindex: 0 }, token.word, glossTip(token.gloss));
+    })))),
+    amzNext('amzText'));
+}
+
+// A word drawn with the mark of its class: box, wavy line or dotted line.
+function markSample(cls, text) {
+  return h('span', { class: `mk-sample mk-${cls}` }, text);
+}
+
+function renderAmzRules() {
+  amzPage('amzRepeat',
+    ['N', 'V', 'A'].map((cls) => h('section', { class: 'card rule-card' },
+      h('h2', { class: 'stack' }, markSample(cls, STRINGS[AMZ_CLASS_KEYS[cls]].de), localized(STRINGS[AMZ_CLASS_KEYS[cls]])),
+      AMZ_RULES.filter((rule) => rule.cls === cls).map((rule) => [
+        h('p', { class: 'rule' }, rule.text.de),
+        localized(rule.text),
+        rule.examples ? h('p', { class: 'rule-examples', lang: 'de' }, rule.examples.map((word) => markSample(cls, word))) : null,
+      ]))),
+    h('button', { class: 'primary wide stack', onclick: () => renderAmzQuiz(0, 0) }, pair('next')));
+}
+
+function renderAmzQuiz(index, right) {
+  if (index === AMZ_QUIZ.length) {
+    amzFinish('amzRepeat');
+    return amzPage('amzRepeat',
+      h('div', { class: 'card done' },
+        icon(Store.profile.animal, 'div', 'pic huge'),
+        h('h1', { class: 'stack' }, pair('wellDone')),
+        h('p', { class: 'score' }, `${right} / ${AMZ_QUIZ.length} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount))),
+      h('button', { class: 'primary wide stack', onclick: renderAmazonia }, pair('next')));
+  }
+  const [word, answer] = AMZ_QUIZ[index];
+  const next = h('button', { class: 'primary wide stack', hidden: true }, pair('next'));
+  const buttons = ['N', 'V', 'A'].map((cls) => h('button', {
+    class: 'option stack center',
+    onclick: () => {
+      const correct = cls === answer;
+      buttons.forEach((b, i) => {
+        b.disabled = true;
+        if (['N', 'V', 'A'][i] === answer) b.classList.add('right-answer');
+      });
+      if (!correct) buttons[['N', 'V', 'A'].indexOf(cls)].classList.add('wrong');
+      next.onclick = () => renderAmzQuiz(index + 1, right + (correct ? 1 : 0));
+      next.hidden = false;
+      next.focus();
+    },
+  }, markSample(cls, STRINGS[AMZ_CLASS_KEYS[cls]].de), localized(STRINGS[AMZ_CLASS_KEYS[cls]])));
+  amzPage('amzRepeat',
+    h('p', { class: 'stack task' }, pair('whichKind')),
+    h('div', { class: 'card' }, h('span', { class: 'word', lang: 'de' }, word)),
+    h('div', { class: 'options three' }, buttons),
+    next);
+}
+
+// Marking: pick a mark, click words. «Prüfen» shows right marks, wrong ones
+// struck through and missing ones dashed; any new click hides the check again.
+function renderAmzMark() {
+  const words = [];
+  let tool = 'N';
+  let checked = false;
+  const result = h('div', { class: 'notice stack', role: 'status', hidden: true });
+
+  const paint = () => words.forEach((w) => {
+    const classes = ['mk'];
+    if (w.mark) classes.push(`mk-${w.mark}`);
+    if (checked && w.mark && w.mark !== w.cls) classes.push('mk-wrong');
+    if (checked && !w.mark && w.cls) classes.push(`mk-${w.cls}`, 'mk-missing');
+    w.el.className = classes.join(' ');
+  });
+
+  const text = AMZ_TEXT2.map((p) => h('p', {}, amzTokens(p).map((token) => {
+    if (token.text) return token.text;
+    const w = { cls: token.wordClass, mark: null };
+    w.el = h('button', {
+      type: 'button', class: 'mk',
+      onclick: () => {
+        w.mark = tool === 'X' || w.mark === tool ? null : tool;
+        checked = false;
+        result.hidden = true;
+        paint();
+      },
+    }, token.word);
+    words.push(w);
+    return w.el;
+  })));
+
+  const toolButtons = ['N', 'V', 'A', 'X'].map((key) => h('button', {
+    class: `mk-tool stack${key === tool ? ' selected' : ''}`,
+    'aria-pressed': String(key === tool),
+    onclick: () => {
+      tool = key;
+      toolButtons.forEach((b, i) => {
+        const on = ['N', 'V', 'A', 'X'][i] === key;
+        b.classList.toggle('selected', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    },
+  }, key === 'X'
+    ? [h('span', { class: 'de' }, '⌫ ', STRINGS.eraser.de), localized(STRINGS.eraser)]
+    : [markSample(key, STRINGS[AMZ_CLASS_KEYS[key]].de), localized(STRINGS[AMZ_CLASS_KEYS[key]])]));
+
+  const check = () => {
+    checked = true;
+    paint();
+    const total = words.filter((w) => w.cls).length;
+    const right = words.filter((w) => w.cls && w.mark === w.cls).length;
+    const wrong = words.filter((w) => w.mark && w.mark !== w.cls).length;
+    const done = right === total && !wrong;
+    if (done) amzFinish('amzMark');
+    result.replaceChildren(...[
+      h('p', { class: 'score' }, `${right} / ${total} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount)),
+      done ? h('p', { class: 'stack' }, pair('wellDone')) : null,
+      !done && wrong ? h('p', { class: 'stack' }, pair('amzWrong')) : null,
+      !done && right < total ? h('p', { class: 'stack' }, pair('amzMissing')) : null,
+    ].filter(Boolean));
+    result.hidden = false;
+  };
+
+  amzPage('amzMark',
+    h('p', { class: 'stack help' }, pair('amzMarkHelp')),
+    h('div', { class: 'mk-tools' }, toolButtons),
+    h('article', { class: 'card reading marking', lang: 'de' }, text),
+    result,
+    h('button', { class: 'primary wide stack', onclick: check }, pair('check')),
+    h('button', { class: 'choice stack center', onclick: renderAmazonia }, pair('next')));
 }
 
 // ---- Settings ----

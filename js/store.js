@@ -27,6 +27,8 @@ const Store = {
       p.fixes = p.fixes || {};
       p.grammar = p.grammar || {};
       p.verbs = p.verbs || {};
+      p.own = p.own || [];
+      p.units = p.units || {};
     }
   },
 
@@ -50,7 +52,7 @@ const Store = {
   },
 
   createProfile(animal, lang) {
-    this.data.profiles[animal] = { animal, lang, items: {}, fixes: {}, grammar: {}, verbs: {} };
+    this.data.profiles[animal] = { animal, lang, items: {}, fixes: {}, grammar: {}, verbs: {}, own: [], units: {} };
     this.data.active = animal;
     this.save();
   },
@@ -72,6 +74,18 @@ const Store = {
     const clean = text.trim();
     if (clean) this.profile.fixes[key] = clean;
     else delete this.profile.fixes[key];
+    this.save();
+  },
+
+  addOwnWord(de, l1) {
+    const id = `own-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    this.profile.own.push({ id, de: de.trim(), l1: l1.trim(), lang: this.profile.lang });
+    this.save();
+  },
+
+  removeOwnWord(id) {
+    this.profile.own = this.profile.own.filter((w) => w.id !== id);
+    delete this.profile.items[id];
     this.save();
   },
 
@@ -97,13 +111,19 @@ const Store = {
     if (!incoming || typeof incoming.items !== 'object' || !incoming.items) return false;
     if (!ANIMALS.includes(incoming.animal) || !knownLangs.includes(incoming.lang)) return false;
     const mine = this.data.profiles[incoming.animal];
+    // Own words from both sides, and the progress on each of them.
+    const own = [...(mine ? mine.own : [])];
+    for (const word of cleanOwnWords(incoming.own, knownLangs)) if (!own.some((w) => w.id === word.id)) own.push(word);
+    const ids = new Set([...knownIds, ...own.map((w) => w.id)]);
     this.data.profiles[incoming.animal] = {
       animal: incoming.animal,
       lang: mine ? mine.lang : incoming.lang,
-      items: mergeRecords(mine ? mine.items : {}, incoming.items, knownIds),
+      items: mergeRecords(mine ? mine.items : {}, incoming.items, ids),
       fixes: { ...cleanFixes(incoming.fixes, knownIds, knownLangs), ...(mine ? mine.fixes : {}) },
       grammar: { ...(incoming.grammar && typeof incoming.grammar === 'object' ? incoming.grammar : {}), ...(mine ? mine.grammar : {}) },
       verbs: { ...(incoming.verbs && typeof incoming.verbs === 'object' ? incoming.verbs : {}), ...(mine ? mine.verbs : {}) },
+      own,
+      units: { ...(incoming.units && typeof incoming.units === 'object' ? incoming.units : {}), ...(mine ? mine.units : {}) },
     };
     this.data.active = incoming.animal;
     this.save();
