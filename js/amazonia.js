@@ -24,6 +24,7 @@ Object.assign(STRINGS, {
   whichKind: amzT('Welche Wortart ist das?', `ما نوع هذه الكلمة؟|این چه نوع کلمه است؟|دا د کلمې کوم ډول دی؟|ئەمە چ جۆرە وشەیەکە؟|Kun gosa jechaa kami?|እዚ እንታይ ዓይነት ቃል እዩ?|Waa noocee erey?|මෙය කුමන වචන වර්ගයද?|What type of word is this?|Quel type de mot est-ce ?|Bu hangi kelime türü?`),
   amzMissing: amzT('Gestrichelt: Dieses Wort fehlt noch.', `خط متقطع: هذه الكلمة ما زالت ناقصة.|خط‌چین: این کلمه هنوز کم است.|ټکي ټکي کرښه: دا کلمه لا پاتې ده.|هێڵی پچڕپچڕ: ئەم وشەیە هێشتا ماوە.|Sarara cittaa: Jechi kun ammallee hir'ata.|ነጠብጣብ መስመር፦ እዛ ቃል ገና ጎዲላ።|Xarriiq go'go'an: Eraygan weli waa maqan yahay.|කඩ ඉර: මෙම වචනය තවම නැත.|Dashed line: this word is still missing.|Pointillés : ce mot manque encore.|Kesik çizgi: Bu kelime hâlâ eksik.`),
   amzWrong: amzT('Durchgestrichen: Dieses Zeichen stimmt nicht.', `مشطوب: هذه العلامة غير صحيحة.|خط‌خورده: این نشانه درست نیست.|کرښه پرې: دا نښه سمه نه ده.|هێڵی پێدا هاتوو: ئەم نیشانەیە هەڵەیە.|Sararaan haqame: Mallattoon kun sirrii miti.|ዝተሰርዘ፦ እዚ ምልክት ቅኑዕ ኣይኮነን።|La tirtiray: Calaamaddan sax maaha.|කපා හැර ඇත: මෙම සලකුණ වැරදියි.|Crossed out: this mark is not right.|Barré : ce signe n'est pas juste.|Üstü çizili: Bu işaret doğru değil.`),
+  amzAllWords: amzT('Alle Wörter üben', `تدرّب على كل الكلمات|همه کلمه‌ها را تمرین کن|ټولې کلمې تمرین کړه|ڕاهێنان لەسەر هەموو وشەکان بکە|Jechoota hunda shaakali|ኩሎም ቃላት ተለማመዱ|Ku celceli dhammaan ereyada|සියලු වචන පුහුණු වන්න|Practise all words|Entraîne-toi avec tous les mots|Tüm kelimeleri çalış`),
   amzAgain: amzT('Nochmals', `مرة أخرى|دوباره|بیا|دووبارە|Irra deebi'i|እንደገና|Mar kale|නැවත|Again|Encore|Tekrar`),
 });
 
@@ -315,8 +316,8 @@ function amzTokens(paragraph) {
   const pattern = /\{([^|}]+)\|([NVA-])(?:\|([^}]+))?\}|([^{]+)/g;
   for (const [, word, wordClass, key, plain] of paragraph.matchAll(pattern)) {
     if (word) {
-      const gloss = AMZ_GLOSS[key || word.toLowerCase()] || null;
-      tokens.push({ word, wordClass: wordClass === '-' ? null : wordClass, gloss });
+      const glossKey = key || word.toLowerCase();
+      tokens.push({ word, wordClass: wordClass === '-' ? null : wordClass, key: glossKey, gloss: AMZ_GLOSS[glossKey] || null });
       continue;
     }
     for (const [, letters, other] of plain.matchAll(/(\p{L}[\p{L}'’]*)|([^\p{L}]+)/gu)) {

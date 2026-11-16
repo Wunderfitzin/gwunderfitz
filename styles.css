@@ -373,7 +373,7 @@ h2 { font-size: 1.1rem; margin-top: 12px; }
 
 .own-list { margin-top: 16px; }
 
-.wordlist.own-list li { grid-template-columns: 1fr auto; }
+.wordlist.own-list li { grid-template-columns: 56px 1fr auto; }
 
 .own-actions { display: flex; gap: 8px; }
 
@@ -877,3 +877,98 @@ button.slot.taken { border-style: solid; background: var(--good); color: var(--i
 .credits li { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }
 
 .credits img { width: 72px; height: 54px; object-fit: cover; border-radius: 8px; }
+
+.type-line { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+.type-line > .art { flex: none; font-size: 1.5rem; font-weight: 800; }
+
+.type-line .answer { flex: 1; min-width: 0; }
+
+.word-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+
+/* Amazonien: Übungen in Stufen */
+
+.art-plural { color: var(--ink); }
+
+.memory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+.memory-card {
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  padding: 6px;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.memory-card.shown { background: var(--surface); color: var(--ink); font-size: 1rem; }
+
+.memory-card.done { border-color: var(--good-ink); background: var(--good); }
+
+.memory-card .word { font-size: 1.05rem; }
+
+.memory .pic.photos .photo img { max-height: 84px; }
+
+.gap-text { margin: 0; font-size: 1.15rem; line-height: 2.4; text-align: start; }
+
+.gap-slot {
+  min-width: 64px;
+  border: 2px dashed var(--muted);
+  border-radius: 8px;
+  background: var(--paper);
+  padding: 0 8px;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.gap-slot.filled { border-style: solid; border-color: var(--brand); }
+
+.gap-slot.good { border-color: var(--good-ink); background: var(--good); }
+
+.gap-slot.again { border-color: var(--die); background: var(--again); }
+
+.tile.chosen { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+
+.gap-mark { display: inline-block; min-width: 3em; border-bottom: 3px solid var(--ink); }
+
+.quiz-after:empty { display: none; }
+
+.quiz-after { margin: 12px 0; text-align: center; }
+
+.umlaut { color: var(--accent); }
+
+.starters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+
+.own-sentences li { grid-template-columns: 64px 1fr auto; }
+
+.own-sentences img { width: 64px; height: 48px; object-fit: cover; border-radius: 8px; }
+
+/* Bild zum eigenen Wort */
+
+.own-pic { display: grid; place-items: center; width: 56px; height: 48px; border: 1px dashed var(--line); border-radius: 10px; background: var(--paper); padding: 2px; }
+
+.own-pic .ico, .own-pic .pic { font-size: 1.6rem; }
+
+.own-pic .pic svg { width: 1.8em; }
+
+.own-pic .pic.photos .photo img { max-height: 42px; max-width: 52px; }
+
+.picker { width: min(560px, calc(100vw - 32px)); }
+
+.picker .answer { margin: 10px 0; }
+
+.picture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 46vh; overflow-y: auto; }
+
+.picture-choice { display: grid; place-items: center; min-height: 64px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 4px; font-size: 2rem; }
+
+.picture-choice:hover { border-color: var(--brand); }
+
+.picture-choice .pic svg { width: 1.6em; }
+
+.picture-choice .photo img { max-height: 60px; }

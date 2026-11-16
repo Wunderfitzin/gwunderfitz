@@ -338,9 +338,9 @@ function renderOwnWords() {
       onsubmit: (e) => {
         e.preventDefault();
         if (!german.input.value.trim() || !own.input.value.trim()) return;
-        Store.addOwnWord(german.input.value, own.input.value);
+        const word = Store.addOwnWord(german.input.value, own.input.value);
         renderOwnWords();
-        root.querySelector('.own-form input').focus();
+        openPicturePicker(word);
       },
     },
       h('p', { class: 'stack help' }, pair('myWordsHelp')),
@@ -352,6 +352,10 @@ function renderOwnWords() {
       items.some(isTypable) ? h('button', { class: 'choice stack center', onclick: () => startWriting(items) }, pair('writing')) : null,
     ] : h('p', { class: 'stack help center' }, pair('noWordsYet')),
     h('ul', { class: 'wordlist own-list' }, [...items].reverse().map((it) => h('li', {},
+      h('button', {
+        class: 'own-pic', 'aria-label': `${STRINGS.pickPicture.de}: ${fullGerman(it)}`, title: STRINGS.pickPicture.de,
+        onclick: () => openPicturePicker(Store.profile.own.find((w) => w.id === it.id)),
+      }, picture(it) || icon('🖼️')),
       h('span', { class: 'stack' }, germanWord(it), itemL1(it)),
       h('span', { class: 'own-actions' },
         Speech.has('de') ? h('button', {
@@ -363,6 +367,69 @@ function renderOwnWords() {
         }, '🗑')))))));
 }
 
+// Everything an own word can show: the unit's photos and every drawing, each with
+// the German words it stands for in the app, so a search can find it.
+function pictureOptions() {
+  const words = {};
+  const add = (key, de) => { (words[key] = words[key] || []).push(de.toLowerCase()); };
+  ITEMS.forEach((it) => add(it.pic, it.de));
+  AMZ_ITEMS.forEach((it) => add(it.pic, it.de));
+  VERBS.forEach((v) => add(v.pic, v.de));
+  const photos = AMZ_ITEMS.filter((it) => it.photos).flatMap((it) => it.photos.map((p) => ({
+    value: { photo: { src: p.src, w: p.w, h: p.h } }, words: [it.de.toLowerCase()], render: () => photo(p),
+  })));
+  const drawings = Object.keys(DRAWINGS).map((key) => ({
+    value: { pic: key }, words: words[key] || [], render: () => icon(key, 'span', 'pic'),
+  }));
+  return photos.concat(drawings);
+}
+
+// A camera photo, made small enough to keep in the browser and in the save file.
+async function shrinkPhoto(file) {
+  const image = await createImageBitmap(file);
+  const scale = Math.min(1, 320 / Math.max(image.width, image.height));
+  const canvas = h('canvas', { width: Math.round(image.width * scale), height: Math.round(image.height * scale) });
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+  return { src: canvas.toDataURL('image/jpeg', 0.72), w: canvas.width, h: canvas.height };
+}
+
+// Opens with pictures for the word itself; with no match, all pictures show.
+function openPicturePicker(word) {
+  if (!word) return;
+  const item = ownItem(word);
+  const options = pictureOptions();
+  const close = () => { dialog.close(); dialog.remove(); };
+  const choose = (choice) => { Store.setOwnPicture(word.id, choice); close(); renderOwnWords(); };
+  const search = h('input', {
+    type: 'search', class: 'answer', lang: 'de', autocomplete: 'off',
+    placeholder: STRINGS.searchPicture.de, 'aria-label': STRINGS.searchPicture.de,
+  });
+  const grid = h('div', { class: 'picture-grid' });
+  const draw = () => {
+    const query = search.value.trim().toLowerCase();
+    const found = query ? options.filter((o) => o.words.some((w) => w.includes(query) || query.includes(w))) : [];
+    grid.replaceChildren(...(found.length ? found : options).map((o) => h('button', {
+      class: 'picture-choice', type: 'button', 'aria-label': o.words[0] || STRINGS.pickPicture.de, onclick: () => choose(o.value),
+    }, o.render())));
+  };
+  const camera = h('input', {
+    type: 'file', accept: 'image/*', capture: 'environment', hidden: true,
+    onchange: async () => { if (camera.files[0]) choose({ photo: await shrinkPhoto(camera.files[0]) }); },
+  });
+  search.value = item.de;
+  search.addEventListener('input', draw);
+  draw();
+  const dialog = h('dialog', { class: 'fix picker' },
+    h('h2', { class: 'stack' }, pair('pickPicture')),
+    germanWord(item),
+    h('div', { class: 'fix-actions' },
+      h('button', { class: 'choice stack', type: 'button', onclick: () => camera.click() }, '📷', pair('takePhoto')),
+      h('button', { class: 'choice stack', type: 'button', onclick: () => choose({}) }, pair('noPicture'))),
+    search, grid, camera);
+  document.body.append(dialog);
+  dialog.showModal();
+}
+
 function topicPlan(items, records) {
   const plan = planSession(items, records, dayNumber());
   return plan.length ? plan : planPractice(items, records);
@@ -372,13 +439,30 @@ function topicPlan(items, records) {
 
 let session = null;
 
-// `back` is where the session ends and where ✕ leads.
-function startSession(items, back = renderHome) {
+// Practice in rounds of five: each word once, then all five matched at once, then
+// each word again in a harder form. The second time does not move the word's box.
+const ROUND_SIZE = 5;
+
+function roundQueue(items) {
+  const queue = [];
+  for (let i = 0; i < items.length; i += ROUND_SIZE) {
+    const round = items.slice(i, i + ROUND_SIZE);
+    queue.push(...round.map((item) => ({ item, retry: false, introduced: false })));
+    if (round.length > 1) queue.push({ match: round });
+    queue.push(...shuffle(round).map((item) => ({
+      item, retry: false, introduced: true, ungraded: true, level: isTypable(item) ? 'letter' : 'pickDe',
+    })));
+  }
+  return queue;
+}
+
+// `back` is where the session ends and where ✕ leads; `rounds` practises in rounds.
+function startSession(items, back = renderHome, rounds = false) {
   // Every student meets the rules before their first nouns.
   const unseen = GRAMMAR.find((lesson) => !Store.profile.grammar[lesson.id]);
-  if (unseen && items.some((it) => it.art)) return renderGrammar(unseen, 0, () => startSession(items, back));
+  if (unseen && items.some((it) => it.art)) return renderGrammar(unseen, 0, () => startSession(items, back, rounds));
   session = {
-    queue: items.map((item) => ({ item, retry: false, introduced: false })),
+    queue: rounds ? roundQueue(items) : items.map((item) => ({ item, retry: false, introduced: false })),
     index: 0,
     first: items.length,
     right: 0,
@@ -391,9 +475,9 @@ function startSession(items, back = renderHome) {
 // steps do not move words between boxes: one word appears several times here.
 const WRITING_WORDS = 3;
 
-function startWriting(items, back = renderHome) {
+function startWriting(items, back = renderHome, count = WRITING_WORDS) {
   const records = Store.profile.items;
-  const words = planPractice(items.filter(isTypable), records, WRITING_WORDS);
+  const words = planPractice(items.filter(isTypable), records, count);
   const queue = WRITING_LEVELS.flatMap((level, i) => shuffle(words).map((item) => ({
     item, level, retry: false, introduced: i > 0 || !!records[item.id], ungraded: true,
   })));
@@ -414,6 +498,7 @@ function sessionFrame(...content) {
 function nextStep() {
   const step = session.queue[session.index];
   if (!step) return renderDone();
+  if (step.match) return renderMatchStep(step);
   const record = Store.profile.items[step.item.id];
   if (!record && !step.introduced) return renderIntro(step);
   const box = record ? record.box : 0;
@@ -484,7 +569,7 @@ function renderChoice(step, type) {
   const { item } = step;
   const toGerman = type === 'pickDe';
   const pictures = !toGerman && !item.abstract;
-  const label = toGerman ? fullGerman : pictures ? (it) => it.pic : (it) => itemText(it).text;
+  const label = toGerman ? fullGerman : pictures ? (it) => it.pic || it.id : (it) => itemText(it).text;
   // Own words are asked among each other first; course words fill up short lists.
   const pool = (item.own ? ownItems() : item.topic === 'amazonia' ? AMZ_ITEMS : []).concat(ITEMS).filter((it) => !pictures || !it.abstract);
   const options = makeOptions(item, pool, label);
@@ -507,6 +592,53 @@ function renderChoice(step, type) {
         onclick: () => answer(step, option.id === item.id, toGerman ? fullGerman(option) : pictures ? picture(option) : itemL1(option)),
       }, toGerman ? fullGerman(option) : pictures ? picture(option) : itemL1(option)))));
   if (type !== 'pickDe') Speech.say(fullGerman(item));
+}
+
+// Nouns are written without their article: it stands in front, in its colour.
+function withArticle(item, field) {
+  if (!item.art) return field;
+  return h('div', { class: 'type-line' }, h('span', { class: `art art-${item.art}` }, item.art), field);
+}
+
+// Several words at once: a German word on the left, its translation on the right.
+function renderMatchStep(step) {
+  let chosen = null;
+  let found = 0;
+  const leftButtons = shuffle(step.match).map((item) => {
+    const button = h('button', {
+      class: 'option',
+      onclick: () => {
+        if (chosen) chosen.button.classList.remove('chosen');
+        chosen = { item, button };
+        button.classList.add('chosen');
+        Speech.say(fullGerman(item));
+      },
+    }, fullGerman(item));
+    return button;
+  });
+  const rightButtons = shuffle(step.match).map((item) => {
+    const button = h('button', {
+      class: 'option',
+      onclick: () => {
+        if (!chosen) return;
+        if (chosen.item !== item) {
+          button.classList.add('wrong');
+          setTimeout(() => button.classList.remove('wrong'), 500);
+          return;
+        }
+        chosen.button.disabled = true;
+        chosen.button.classList.remove('chosen');
+        button.disabled = true;
+        chosen = null;
+        found += 1;
+        if (found === step.match.length) setTimeout(() => { session.index += 1; nextStep(); }, 700);
+      },
+    }, itemL1(item));
+    return button;
+  });
+  sessionFrame(
+    h('h1', { class: 'stack task' }, pair('match')),
+    h('div', { class: 'match' }, h('div', { class: 'options' }, leftButtons), h('div', { class: 'options' }, rightButtons)));
 }
 
 function renderArticle(step) {
@@ -546,7 +678,7 @@ function renderType(step) {
         if (input.value.trim()) answer(step, checkTyped(item, input.value), input.value.trim());
       },
     },
-      input,
+      withArticle(item, input),
       h('div', { class: 'letters' }, ['ä', 'ö', 'ü'].map((letter) => h('button', {
         type: 'button', class: 'letter', onclick: () => insert(letter),
       }, letter))),
@@ -637,7 +769,7 @@ function renderSpelling(step, level) {
     h('h1', { class: 'stack task' }, pair(level)),
     h('div', { class: 'card' }, picture(item, 'big'), itemL1(item)),
     audioButtons(fullGerman(item)),
-    slotRow, bank, check);
+    withArticle(item, slotRow), bank, check);
   Speech.say(fullGerman(item));
 }
 
@@ -1123,6 +1255,7 @@ function renderAmazonia() {
       h('span', { class: 'station-mark', 'aria-hidden': 'true' }, amzDone(step) ? '✓' : '○'),
       h('span', { class: 'stack' }, pair(step)),
       step === next ? h('span', { class: 'station-next stack' }, pair('continueHere')) : null)))),
+    amzLevelSections(),
     h('button', { class: 'text-button center', onclick: renderAmzCredits }, 'Bildnachweis')));
 }
 
@@ -1150,12 +1283,16 @@ function renderAmzRead() {
 
 function renderAmzWords() {
   const records = Store.profile.items;
+  // Words not met yet come first, then the weakest.
+  const practise = (items) => startSession(planPractice(items, records, items.length), renderAmzWords, true);
   amzPage('amzWords',
-    h('button', { class: 'primary wide stack', onclick: () => startSession(topicPlan(AMZ_ITEMS, records), renderAmzWords) }, pair('practice')),
-    h('button', { class: 'choice stack center', onclick: () => startWriting(AMZ_ITEMS, renderAmzWords) }, pair('writing')),
-    ['N', 'V', 'A'].map((cls) => [
-      h('h2', { class: 'stack' }, pair(AMZ_CLASS_KEYS[cls])),
-      h('ul', { class: 'wordlist' }, AMZ_ITEMS.filter((it) => it.wordClass === cls).map((it) => h('li', {},
+    h('button', { class: 'primary wide stack', onclick: () => practise(AMZ_ITEMS) }, pair('amzAllWords')),
+    ['N', 'V', 'A'].map((cls) => AMZ_ITEMS.filter((it) => it.wordClass === cls)).map((items) => [
+      h('h2', { class: 'stack' }, pair(AMZ_CLASS_KEYS[items[0].wordClass])),
+      h('div', { class: 'word-actions' },
+        h('button', { class: 'choice stack center', onclick: () => practise(items) }, pair('practice')),
+        h('button', { class: 'choice stack center', onclick: () => startWriting(items, renderAmzWords, 5) }, pair('writing'))),
+      h('ul', { class: 'wordlist' }, items.map((it) => h('li', {},
         picture(it),
         h('span', { class: 'stack' }, germanWord(it), itemL1(it)),
         Speech.has('de') ? h('button', {

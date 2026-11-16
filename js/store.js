@@ -79,7 +79,20 @@ const Store = {
 
   addOwnWord(de, l1) {
     const id = `own-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    this.profile.own.push({ id, de: de.trim(), l1: l1.trim(), lang: this.profile.lang });
+    const word = { id, de: de.trim(), l1: l1.trim(), lang: this.profile.lang };
+    this.profile.own.push(word);
+    this.save();
+    return word;
+  },
+
+  // A drawing key (`pic`) or a photo ({ src, w, h }); an empty choice removes the picture.
+  setOwnPicture(id, { pic, photo }) {
+    const word = this.profile.own.find((w) => w.id === id);
+    if (!word) return;
+    delete word.pic;
+    delete word.photo;
+    if (pic) word.pic = pic;
+    if (photo) word.photo = photo;
     this.save();
   },
 
