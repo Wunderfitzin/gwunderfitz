@@ -25,14 +25,33 @@ const Speech = {
     if (/premium|neural|natural/.test(name)) points += 8;
     if (/enhanced|erweitert|verbessert/.test(name)) points += 6;
     if (/google|microsoft/.test(name)) points += 4;
-    if (voice.lang.toLowerCase().replace('_', '-') === 'de-ch') points += 1;
     return points;
   },
 
-  voiceFor(lang) {
+  // Typical Swiss expressions sound wrong from a voice from Germany, so a text
+  // that contains one is read by a Swiss voice.
+  swiss: ['grüezi', 'grüessech', 'adieu', 'merci', 'sali', 'salü', 'uf widerluege', 'exgüsi', 'en guete', 'znüni', 'zvieri', 'zmittag', 'znacht', 'gäll'],
+
+  isSwiss(text) {
+    const lower = (text || '').toLowerCase();
+    return this.swiss.some((word) => new RegExp(`(^|[^\\p{L}])${word}($|[^\\p{L}])`, 'u').test(lower));
+  },
+
+  // German should sound like Hochdeutsch: a voice from Germany comes first,
+  // then a Swiss voice, then any other German voice. Swiss expressions swap
+  // the first two.
+  region(voice, swiss) {
+    const code = voice.lang.toLowerCase().replace('_', '-');
+    if (code === 'de-de') return swiss ? 1 : 0;
+    if (code === 'de-ch') return swiss ? 0 : 1;
+    return 2;
+  },
+
+  voiceFor(lang, text) {
+    const swiss = lang === 'de' && this.isSwiss(text);
     const local = this.voices
       .filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith(lang) && this.score(v) >= 0)
-      .sort((a, b) => this.score(b) - this.score(a));
+      .sort((a, b) => (lang === 'de' ? this.region(a, swiss) - this.region(b, swiss) : 0) || this.score(b) - this.score(a));
     return local[0] || null;
   },
 
@@ -57,7 +76,7 @@ const Speech = {
       this.audio.play().catch(() => {});
       return;
     }
-    const voice = this.voiceFor(lang);
+    const voice = this.voiceFor(lang, text);
     if (!voice) return;
     const utterance = new SpeechSynthesisUtterance(text.replace(/…/g, ''));
     utterance.voice = voice;
