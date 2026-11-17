@@ -9,7 +9,7 @@ function amzT(de, rest) {
 }
 
 Object.assign(STRINGS, {
-  amzTitle: amzT('Museum Rietberg: Amazonien', `متحف ريتبرغ: الأمازون|موزیم ریتبرگ: آمازون|د ریټبرګ موزیم: امازون|مۆزەخانەی ریتبێرگ: ئەمازۆن|Muuziyeemii Rietberg: Amazoniyaa|ቤተ-መዘክር ሪትበርግ፦ ኣማዞንያ|Matxafka Rietberg: Amazonia|රීට්බර්ග් කෞතුකාගාරය: ඇමසෝනියාව|Museum Rietberg: Amazonia|Musée Rietberg : l'Amazonie|Rietberg Müzesi: Amazonya`),
+  amzTitle: amzT('Besuch Museum Rietberg: Amazonien', `زيارة متحف ريتبرغ: الأمازون|بازدید از موزیم ریتبرگ: آمازون|د ریټبرګ موزیم لیدنه: امازون|سەردانی مۆزەخانەی ریتبێرگ: ئەمازۆن|Daawwannaa Muuziyeemii Rietberg: Amazoniyaa|ምብጻሕ ቤተ-መዘክር ሪትበርግ፦ ኣማዞንያ|Booqasho Matxafka Rietberg: Amazonia|රීට්බර්ග් කෞතුකාගාරය නැරඹීම: ඇමසෝනියාව|Visit to Museum Rietberg: Amazonia|Visite du musée Rietberg : l'Amazonie|Rietberg Müzesi ziyareti: Amazonya`),
   amzRead: amzT('Lesen in deiner Sprache', `اقرأ بلغتك|به زبان خودت بخوان|په خپله ژبه یې ولوله|بە زمانی خۆت بیخوێنەوە|Afaan keetiin dubbisi|ብቋንቋኹም ኣንብቡ|Ku akhri luqaddaada|ඔබේ භාෂාවෙන් කියවන්න|Read in your language|Lis dans ta langue|Kendi dilinde oku`),
   amzWords: amzT('Wörter lernen', `تعلّم الكلمات|کلمه‌ها را یاد بگیر|کلمې زده کړه|وشەکان فێربە|Jechoota baradhu|ቃላት ተማሃሩ|Baro ereyada|වචන ඉගෙන ගන්න|Learn the words|Apprends les mots|Kelimeleri öğren`),
   amzText: amzT('Lesen auf Deutsch', `اقرأ بالألمانية|به آلمانی بخوان|په الماني یې ولوله|بە ئەڵمانی بیخوێنەوە|Afaan Jarmaniitiin dubbisi|ብጀርመን ኣንብቡ|Ku akhri Jarmal|ජර්මන් භාෂාවෙන් කියවන්න|Read in German|Lis en allemand|Almanca oku`),
@@ -174,6 +174,8 @@ const amzTree = (x, ground, k) => rect(x - 3 * k, ground - 22 * k, 6 * k, 22 * k
 const amzShirt = (dx, dy, k, fill) => `<g transform="translate(${dx} ${dy}) scale(${k})">${path('M12 0l-12 8 6 10 6-4v30h28V14l6 4 6-10-12-8h-8q-5 6-10 0z', fill)}</g>`;
 
 Object.assign(DRAWINGS, {
+  // The unit's own sign: a painted pot like those in the exhibition.
+  '🏺': art(amzPot(36, 22, 1.0, C.orange, rect(4, 10, 40, 5, C.ink) + line('M8 24q8-8 16 0t16 0', C.cream, 4) + rect(5, 36, 38, 4, C.ink))),
   'amz-leben': amzScene(
     path('M62 96l24-20 24 20z', C.red) + rect(66, 96, 40, 38, C.cream) + rect(80, 112, 12, 22, C.brown, 2) + rect(70, 102, 8, 8, C.sky, 1) + rect(94, 102, 8, 8, C.sky, 1)
     + drawFigure('woman', { x: 26, s: 0.82 }) + drawFigure('child', { x: 47, s: 0.85 })),

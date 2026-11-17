@@ -1214,8 +1214,6 @@ function renderStationDone() {
 
 // ---- Lerneinheit «Amazonien» (Museum Rietberg) ----
 
-const AMZ_STEPS = ['amzRead', 'amzWords', 'amzText', 'amzRepeat', 'amzMark'];
-
 // The words step is done once every word has been met in practice.
 function amzDone(step) {
   if (step === 'amzWords') return AMZ_ITEMS.every((it) => Store.profile.items[it.id]);
@@ -1227,8 +1225,11 @@ function amzFinish(step) {
   Store.save();
 }
 
+const amzStations = () => AMZ_SECTIONS.flatMap(([, stations]) => stations);
+
 function amzShare() {
-  return Math.round((AMZ_STEPS.filter(amzDone).length / AMZ_STEPS.length) * 100);
+  const stations = amzStations();
+  return Math.round((stations.filter(([id]) => amzDone(id)).length / stations.length) * 100);
 }
 
 function amzPage(titleKey, ...content) {
@@ -1243,19 +1244,21 @@ function amzNext(step) {
 }
 
 function renderAmazonia() {
-  const next = AMZ_STEPS.find((step) => !amzDone(step));
-  const open = { amzRead: renderAmzRead, amzWords: renderAmzWords, amzText: renderAmzText, amzRepeat: renderAmzRules, amzMark: renderAmzMark };
+  const next = amzStations().find(([id]) => !amzDone(id));
   show(h('main', { class: 'page narrow' },
     h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderHome }, '← ', STRINGS.back.de), null),
-    icon('🏺', 'div', 'pic big'),
+    // The rainforest from above, to make the students curious.
+    h('div', { class: 'amz-hero' }, h('img', { src: AMZ_PHOTOS.wald[0].src, alt: '', width: AMZ_PHOTOS.wald[0].w, height: AMZ_PHOTOS.wald[0].h })),
     h('h1', { class: 'stack' }, pair('amzTitle')),
-    h('ol', { class: 'stations' }, AMZ_STEPS.map((step) => h('li', {}, h('button', {
-      class: `station${step === next ? ' next' : ''}`, onclick: () => open[step](),
-    },
-      h('span', { class: 'station-mark', 'aria-hidden': 'true' }, amzDone(step) ? '✓' : '○'),
-      h('span', { class: 'stack' }, pair(step)),
-      step === next ? h('span', { class: 'station-next stack' }, pair('continueHere')) : null)))),
-    amzLevelSections(),
+    AMZ_SECTIONS.map(([titleKey, stations]) => [
+      titleKey ? h('h2', { class: 'stack' }, pair(titleKey)) : null,
+      h('ol', { class: 'stations' }, stations.map((station) => h('li', {}, h('button', {
+        class: `station${station === next ? ' next' : ''}`, onclick: () => station[2](),
+      },
+        h('span', { class: 'station-mark', 'aria-hidden': 'true' }, amzDone(station[0]) ? '✓' : '○'),
+        h('span', { class: 'stack' }, pair(station[1])),
+        station === next ? h('span', { class: 'station-next stack' }, pair('continueHere')) : null)))),
+    ]),
     h('button', { class: 'text-button center', onclick: renderAmzCredits }, 'Bildnachweis')));
 }
 

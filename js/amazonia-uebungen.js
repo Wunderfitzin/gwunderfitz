@@ -2,9 +2,9 @@
 // Translations are AI drafts, in the order of AMZ_LANGS, separated by |.
 
 Object.assign(STRINGS, {
-  amzLevel1: amzT('Stufe 1: Einstieg', `المستوى 1: البداية|سطح ۱: آغاز|کچه ۱: پیل|ئاستی ١: دەستپێک|Sadarkaa 1: Jalqaba|ደረጃ 1፦ መእተዊ|Heerka 1: Bilow|1 වන මට්ටම: ආරම්භය|Level 1: Getting started|Niveau 1 : Débuter|1. seviye: Başlangıç`),
-  amzLevel2: amzT('Stufe 2: Aufbau', `المستوى 2: البناء|سطح ۲: پیشرفت|کچه ۲: پرمختګ|ئاستی ٢: بنیاتنان|Sadarkaa 2: Ijaarsa|ደረጃ 2፦ ምህናጽ|Heerka 2: Dhisid|2 වන මට්ටම: ගොඩනැගීම|Level 2: Building up|Niveau 2 : Progresser|2. seviye: Gelişim`),
-  amzLevel3: amzT('Stufe 3: Vertiefung', `المستوى 3: التعمّق|سطح ۳: تعمیق|کچه ۳: ژورتیا|ئاستی ٣: قووڵبوونەوە|Sadarkaa 3: Gadi fageessuu|ደረጃ 3፦ ምዕማቕ|Heerka 3: Qoto dheer|3 වන මට්ටම: ගැඹුරු කිරීම|Level 3: Going deeper|Niveau 3 : Approfondir|3. seviye: Derinleşme`),
+  amzLevel1: amzT('Vertiefung 1', `التعمّق 1|تعمیق ۱|ژورتیا ۱|قووڵبوونەوە ١|Gadi fageessuu 1|ምዕማቕ 1|Qoto dheer 1|ගැඹුරු කිරීම 1|Going deeper 1|Approfondissement 1|Derinleşme 1`),
+  amzLevel2: amzT('Vertiefung 2', `التعمّق 2|تعمیق ۲|ژورتیا ۲|قووڵبوونەوە ٢|Gadi fageessuu 2|ምዕማቕ 2|Qoto dheer 2|ගැඹුරු කිරීම 2|Going deeper 2|Approfondissement 2|Derinleşme 2`),
+  amzLevel3: amzT('Vertiefung 3', `التعمّق 3|تعمیق ۳|ژورتیا ۳|قووڵبوونەوە ٣|Gadi fageessuu 3|ምዕማቕ 3|Qoto dheer 3|ගැඹුරු කිරීම 3|Going deeper 3|Approfondissement 3|Derinleşme 3`),
   amzMemory: amzT('Memory', `لعبة الذاكرة|بازی حافظه|د حافظې لوبه|یاری بیرەوەری|Taphataa yaadannoo|ጸወታ ዝኽሪ|Ciyaarta xusuusta|මතක ක්‍රීඩාව|Memory game|Memory|Hafıza oyunu`),
   amzSortArticle: amzT('der, die, das sortieren', `رتّب der وdie وdas|der، die، das را دسته‌بندی کن|der، die، das ترتیب کړه|der، die، das ڕیز بکە|der, die, das qindeessi|der፣ die፣ das ሰርዑ|Kala sooc der, die, das|der, die, das වර්ග කරන්න|Sort der, die, das|Trie der, die, das|der, die, das ayır`),
   amzSortClass: amzT('Wortarten sortieren', `رتّب أنواع الكلمات|نوع کلمه‌ها را دسته‌بندی کن|د کلمو ډولونه ترتیب کړه|جۆری وشەکان ڕیز بکە|Gosa jechootaa qindeessi|ዓይነት ቃላት ሰርዑ|Kala sooc noocyada ereyada|වචන වර්ග වර්ග කරන්න|Sort the word types|Trie les types de mots|Kelime türlerini ayır`),
@@ -440,20 +440,18 @@ function renderAmzOwn(photoIndex = 0) {
     ] : null);
 }
 
-// The three levels as lists of stations on the unit overview.
-const AMZ_LEVELS = [
-  ['amzLevel1', [['memory', 'amzMemory', renderAmzMemory], ['sortArticle', 'amzSortArticle', renderAmzSortArticle], ['sortClass', 'amzSortClass', renderAmzSortClass]]],
-  ['amzLevel2', [['gap', 'amzGap', renderAmzGap], ['trueFalse', 'amzTrueFalse', renderAmzTrueFalse], ['opposites', 'amzOpposites', renderAmzOpposites], ['build', 'amzBuild', renderAmzBuild]]],
+// The unit: the text in the student's language for everyone, then three rounds of
+// going deeper. The German text opens round 2, once the words are known.
+// Screens of app.js are wrapped, as that file loads after this one.
+const AMZ_SECTIONS = [
+  [null, [['amzRead', 'amzRead', () => renderAmzRead()]]],
+  ['amzLevel1', [
+    ['amzWords', 'amzWords', () => renderAmzWords()], ['memory', 'amzMemory', renderAmzMemory],
+    ['sortArticle', 'amzSortArticle', renderAmzSortArticle], ['amzRepeat', 'amzRepeat', () => renderAmzRules()],
+    ['sortClass', 'amzSortClass', renderAmzSortClass]]],
+  ['amzLevel2', [
+    ['amzText', 'amzText', () => renderAmzText()], ['amzMark', 'amzMark', () => renderAmzMark()],
+    ['gap', 'amzGap', renderAmzGap], ['trueFalse', 'amzTrueFalse', renderAmzTrueFalse],
+    ['opposites', 'amzOpposites', renderAmzOpposites], ['build', 'amzBuild', renderAmzBuild]]],
   ['amzLevel3', [['plural', 'amzPlural', renderAmzPlural], ['verbForm', 'amzVerbForm', renderAmzVerbForm], ['own', 'amzOwn', renderAmzOwn]]],
 ];
-
-function amzLevelSections() {
-  return AMZ_LEVELS.map(([levelKey, stations]) => [
-    h('h2', { class: 'stack' }, pair(levelKey)),
-    h('ol', { class: 'stations' }, stations.map(([id, titleKey, open]) => h('li', {}, h('button', {
-      class: 'station', onclick: () => open(),
-    },
-      h('span', { class: 'station-mark', 'aria-hidden': 'true' }, amzDone(id) ? '✓' : '○'),
-      h('span', { class: 'stack' }, pair(titleKey)))))),
-  ]);
-}
