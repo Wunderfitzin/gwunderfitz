@@ -1897,6 +1897,12 @@ function renderSettings(message) {
         lang: l.code, dir: l.dir,
         onclick: () => { Store.profile.lang = l.code; Store.save(); renderSettings(); },
       }, l.name))),
+    h('h2', { class: 'stack' }, pair('pickAvatar')),
+    h('div', { class: 'animals' }, [Store.profile.animal, ...Store.freeAnimals()].filter((a) => avatarName(a)).map((a) => h('button', {
+      class: a === Store.profile.animal ? 'animal avatar current' : 'animal avatar', 'aria-label': avatarName(a),
+      'aria-pressed': String(a === Store.profile.animal),
+      onclick: () => { if (Store.changeFigure(a)) renderSettings(); },
+    }, icon(a), h('span', { class: 'avatar-name' }, avatarName(a))))),
     h('h2', { class: 'stack' }, pair('moveTitle')),
     h('p', { class: 'stack help' }, pair('moveHelp')),
     typeof message === 'string' ? h('p', { class: 'notice stack', role: 'alert' }, pair(message)) : null,

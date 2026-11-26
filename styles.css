@@ -1156,3 +1156,12 @@ button.slot.taken { border-style: solid; background: var(--good); color: var(--i
 .avatar-name { font-size: 0.78rem; font-weight: 700; line-height: 1.15; text-align: center; }
 
 .animals:has(.avatar) { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+
+/* Verb pictures in the comic style of the profile figures: a thin dark outline round
+   every filled shape (lines, eyes, cheeks and the background stay as they are) */
+svg.vp-comic :is(path, rect, circle, ellipse, polygon):not([fill="none"]):not(.no-ol):not(.vp-bg) {
+  stroke: #2a2a2a;
+  stroke-width: 1.1px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}

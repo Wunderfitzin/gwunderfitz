@@ -16,7 +16,10 @@ PEOPLE.swimmer = { ...PEOPLE.lena, top: PEOPLE.lena.skin, scale: 1 };
 const SKIN = { dark: '#5e3a22', brown: '#a66b42', light: '#f6d7bf', tan: '#e9c9a0' };
 
 const VP_INK = '#23302f';
-const vpFrame = (body) => `<svg viewBox="0 0 120 90" role="presentation"><circle cx="60" cy="45" r="44" fill="#e6efec"/>${body}</svg>`;
+const VP_LINE = '#2a2a2a';
+// The class vp-comic gives every filled shape the figures' thin dark outline (styles.css);
+// the background circle gets its pastel colour per verb at the end of this file.
+const vpFrame = (body) => `<svg class="vp-comic" viewBox="0 0 120 90" role="presentation"><circle class="vp-bg" cx="60" cy="45" r="44" fill="#e6efec"/>${body}</svg>`;
 const vpLine = (d, color, width = 3) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
 const vpText = (x, y, text, size, color = VP_INK, weight = 800) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="${size}" font-weight="${weight}" fill="${color}">${text}</text>`;
 const vpArrow = (x1, y1, x2, y2, color = '#e8873a') => {
@@ -40,9 +43,9 @@ function vpFace(c, dir, { eyes = 'open', mouth = 'smile' } = {}) {
     ? ex.map((x) => `<path d="M${x - 2.6} -79q2.6-3.4 5.2 0" fill="none" stroke="${VP_INK}" stroke-width="1.5" stroke-linecap="round"/>`).join('')
     : eyes === 'closed'
     ? ex.map((x) => `<path d="M${x - 2.5} -80q2.5 2.5 5 0" fill="none" stroke="${VP_INK}" stroke-width="1.4" stroke-linecap="round"/>`).join('')
-    : ex.map((x) => `<circle cx="${x}" cy="-80" r="1.9" fill="${VP_INK}"/><circle cx="${x + 0.6}" cy="-80.7" r="0.6" fill="#fff"/>`).join('');
+    : ex.map((x) => `<circle class="no-ol" cx="${x}" cy="-80" r="1.9" fill="${VP_INK}"/><circle class="no-ol" cx="${x + 0.6}" cy="-80.7" r="0.6" fill="#fff"/>`).join('');
   const nose = `<path d="M${dir * 2} -78.6q${dir * 1.8} 2 0 2.6" fill="none" stroke="${vpShade(c.skin, 0.72)}" stroke-width="1" stroke-linecap="round"/>`;
-  const cheeks = ex.map((x) => `<circle cx="${x + (x < dir * 1.5 ? -1.5 : 1.5)}" cy="-75.5" r="2.3" fill="#e8846f" opacity="0.28"/>`).join('');
+  const cheeks = ex.map((x) => `<circle class="no-ol" cx="${x + (x < dir * 1.5 ? -1.5 : 1.5)}" cy="-75.5" r="2.3" fill="#e8846f" opacity="0.28"/>`).join('');
   const mx = dir * 1.5;
   const mouths = {
     smile: `<path d="M${mx - 4} -73q4 4 8 0" fill="none" stroke="${VP_INK}" stroke-width="1.4" stroke-linecap="round"/>`,
@@ -72,8 +75,8 @@ function vpFigure(who, { x, y = 86, s = 0.72, dir = 1, front = null, back = null
   const skirt = p.skirt || p.look === 'scarf' || p.look === 'ponytail';
   const fold = vpShade(c.bottom, 0.78);
   const shoe = (sx, sy) => `<ellipse cx="${sx}" cy="${sy}" rx="7" ry="3" fill="${VP_INK}"/><path d="M${sx - 4} ${sy - 1.2}h4" stroke="#6b7775" stroke-width="0.9" stroke-linecap="round"/>`;
-  const leg = (d) => vpLine(d, fold, 11.4) + vpLine(d, c.bottom, 10);
-  const shadow = `<ellipse cx="0" cy="0" rx="20" ry="3.4" fill="#23302f" opacity="0.12"/>`;
+  const leg = (d) => vpLine(d, VP_LINE, 11.8) + vpLine(d, c.bottom, 9.6);
+  const shadow = `<ellipse class="no-ol" cx="0" cy="0" rx="20" ry="3.4" fill="#23302f" opacity="0.12"/>`;
   let lower;
   let lift = 0;
   if (legs === 'walk') lower = leg('M-4-34L-12-4') + leg('M4-34L12-4') + shoe(-14, -2) + shoe(14, -2);
@@ -96,7 +99,7 @@ function vpFigure(who, { x, y = 86, s = 0.72, dir = 1, front = null, back = null
   const arm = (side, hand, bend = null, tip = null) => {
     const [hx, hy] = hand || [side * 17, -34];
     const path = bend ? `M${side * 12}-60L${bend[0]} ${bend[1]}L${hx} ${hy}` : `M${side * 12}-60L${hx} ${hy}`;
-    return vpLine(path, bend ? VP_INK : sleeveEdge, 8.6) + vpLine(path, c.top, 7)
+    return vpLine(path, VP_LINE, 9) + vpLine(path, c.top, 6.8)
       + `<circle cx="${hx}" cy="${hy}" r="4.2" fill="${c.skin}" stroke="${vpShade(c.skin, 0.75)}" stroke-width="0.8"/>`
       + (tip ? vpLine(`M${hx} ${hy}L${tip[0]} ${tip[1]}`, c.skin, 2.8) : '');
   };
@@ -150,7 +153,7 @@ const vpRoad = `<path d="M30 90 54 30h12l24 60z" fill="#d9d3c4"/><path d="M60 34
 
 const VERB_PICTURES = {
   // So stelle ich mich vor
-  sein: vpFrame(`<ellipse cx="52" cy="50" rx="30" ry="40" fill="#ffe3cb"/>` + vpFigure('amina', { x: 52, y: 90, s: 1, front: [8, -50], elbow: [26, -42], finger: [1, -53] }) + vpBubble(78, 8, 30, 20, vpText(93, 22, 'ich', 11), 'left')),
+  sein: vpFrame(`<ellipse class="no-ol" cx="52" cy="50" rx="30" ry="40" fill="#ffe3cb"/>` + vpFigure('amina', { x: 52, y: 90, s: 1, front: [8, -50], elbow: [26, -42], finger: [1, -53] }) + vpBubble(78, 8, 30, 20, vpText(93, 22, 'ich', 11), 'left')),
   haben: vpFrame(vpFigure('kofi', { x: 60, s: 1.1, front: [8, -50], back: [-8, -50], hold: vpBall(0, -50, 12) })),
   // A small name badge on the chest, shown enlarged in a magnifier: ALI.
   heissen: vpFrame(vpFigure('man', { x: 40, y: 88, s: 0.9, over: `<rect x="-10" y="-56" width="12" height="8" rx="1.2" fill="#fff" stroke="#d9534f" stroke-width="0.8"/><rect x="-10" y="-56" width="12" height="2.4" fill="#d9534f"/><path d="M-8-51h8" stroke="${VP_INK}" stroke-width="0.8"/>` }) + `<path d="M41 52 66 24M41 57 66 58" stroke="#9aa3a1" stroke-width="1" stroke-dasharray="2 2"/><circle cx="86" cy="41" r="25" fill="#fff" stroke="#2f3a4a" stroke-width="3"/>${vpLine('M104 59l9 9', '#2f3a4a', 5)}` + `<rect x="68" y="30" width="36" height="22" rx="3" fill="#fff" stroke="#d9534f" stroke-width="1.4"/><rect x="68" y="30" width="36" height="6" rx="2" fill="#d9534f"/>${vpText(86, 49, 'ALI', 12)}`),
@@ -206,7 +209,7 @@ const VERB_PICTURES = {
   tanzen: vpFrame(vpFigure('mei', { x: 60, legs: 'walk', front: [24, -94], back: [-24, -90], mouth: 'open' }) + vpNote(26, 30) + vpNote(94, 26, '#e8873a')),
   // Neutral: closed eyes and hands together, no sign of any one religion.
   // Kneeling with eyes closed and hands together: no sign of any one religion.
-  beten: vpFrame(`<ellipse cx="60" cy="44" rx="30" ry="36" fill="#ffe3cb"/><rect x="30" y="80" width="60" height="7" rx="3" fill="#9fc3d8"/><path d="M34 83.5h52" stroke="#fff" stroke-width="1" stroke-dasharray="3 3"/>` + vpFigure('ravi', { x: 60, y: 84, s: 0.95, legs: 'kneel', front: [3, -54], back: [-3, -54], elbow: [17, -44], backElbow: [-17, -44], eyes: 'closed', mouth: 'flat', over: `<path d="M-3.6-48V-60q3.6-9 7.2 0v12z" fill="${PEOPLE.ravi.skin}" stroke="${vpShade(PEOPLE.ravi.skin, 0.72)}" stroke-width="0.8"/><path d="M0-64v16" stroke="${vpShade(PEOPLE.ravi.skin, 0.72)}" stroke-width="0.8"/>` })),
+  beten: vpFrame(`<ellipse class="no-ol" cx="60" cy="44" rx="30" ry="36" fill="#ffe3cb"/><rect x="30" y="80" width="60" height="7" rx="3" fill="#9fc3d8"/><path d="M34 83.5h52" stroke="#fff" stroke-width="1" stroke-dasharray="3 3"/>` + vpFigure('ravi', { x: 60, y: 84, s: 0.95, legs: 'kneel', front: [3, -54], back: [-3, -54], elbow: [17, -44], backElbow: [-17, -44], eyes: 'closed', mouth: 'flat', over: `<path d="M-3.6-48V-60q3.6-9 7.2 0v12z" fill="${PEOPLE.ravi.skin}" stroke="${vpShade(PEOPLE.ravi.skin, 0.72)}" stroke-width="0.8"/><path d="M0-64v16" stroke="${vpShade(PEOPLE.ravi.skin, 0.72)}" stroke-width="0.8"/>` })),
   kuessen: vpFrame(`<circle cx="34" cy="48" r="22" fill="${PEOPLE.amina.skin}"/><path d="M12 48a22 22 0 0 1 30-21c-8 2-14 10-14 22z" fill="${PEOPLE.amina.hair}"/><path d="M44 44q3 2 6 0" fill="none" stroke="${VP_INK}" stroke-width="1.6" stroke-linecap="round"/>`
     + `<circle cx="86" cy="48" r="22" fill="${PEOPLE.ben.skin}"/><path d="M108 48a22 22 0 0 0-30-21c8 2 14 10 14 22z" fill="${PEOPLE.ben.hair}"/><path d="M70 44q3 2 6 0" fill="none" stroke="${VP_INK}" stroke-width="1.6" stroke-linecap="round"/>`
     + `<path d="M52 52q4-5 8-1v8q-4 4-8-1q2-3 0-6z" fill="#d9534f"/><path d="M68 52q-4-5-8-1v8q4 4 8-1q-2-3 0-6z" fill="#c8373a"/><path d="M60 26c-3-5-10-2-7 3l7 6 7-6c3-5-4-8-7-3z" fill="#d9534f"/>`),
@@ -227,4 +230,8 @@ const VERB_PICTURES = {
   putzen: vpFrame(`<rect x="22" y="14" width="60" height="64" rx="3" fill="#bfe3f2" stroke="#fff" stroke-width="4"/><path d="M52 14v64M22 46h60" stroke="#fff" stroke-width="4"/>${vpText(34, 32, '✦', 12, '#fff', 400)}${vpText(70, 66, '✦', 10, '#fff', 400)}<rect x="56" y="40" width="22" height="16" rx="4" fill="#f2c14e"/>` + vpHand(84, 52, 190, { skin: SKIN.brown, sleeve: '#e4572e' })),
 };
 
-for (const [id, svg] of Object.entries(VERB_PICTURES)) DRAWINGS[`v-${id}`] = svg;
+// Pastel backgrounds like the profile figures, in turn.
+const VP_BACKS = ['#d4f3e2', '#ffe0cf', '#e6defd', '#d6ebff', '#fbf0bf', '#ffdce8'];
+Object.entries(VERB_PICTURES).forEach(([id, svg], i) => {
+  DRAWINGS[`v-${id}`] = svg.replace('class="vp-bg" cx="60" cy="45" r="44" fill="#e6efec"', `class="vp-bg" cx="60" cy="45" r="44" fill="${VP_BACKS[i % VP_BACKS.length]}"`);
+});

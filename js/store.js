@@ -1,11 +1,18 @@
 // Profiles and progress, kept only in this browser. Learners are identified by a
 // comic figure (avatars.js), not a name, so no personal data is stored. Profiles made
-// with the earlier animals keep working; new profiles choose a figure.
+// with the earlier animals get a figure when they are loaded or imported.
 const OLD_ANIMALS = ['🦊', '🐻', '🐼', '🦉', '🐢', '🦁', '🐸', '🐙', '🦋', '🐝', '🐧', '🦔'];
 const PICKABLE = typeof AVATAR_KEYS !== 'undefined' ? AVATAR_KEYS : OLD_ANIMALS;
 const ANIMALS = [...PICKABLE, ...OLD_ANIMALS];
 const STORE_KEY = 'gwunderfitz:v1';
 const MAX_FIX_LENGTH = 200;
+
+// The figure an animal profile becomes: the same place in the list, or the first free one.
+function figureFor(animal, taken) {
+  if (PICKABLE === OLD_ANIMALS || !OLD_ANIMALS.includes(animal)) return animal;
+  const wanted = PICKABLE[OLD_ANIMALS.indexOf(animal)];
+  return wanted && !taken.has(wanted) ? wanted : PICKABLE.find((k) => !taken.has(k)) || animal;
+}
 
 function cleanFixes(fixes, knownIds, knownLangs) {
   const clean = {};
@@ -33,6 +40,31 @@ const Store = {
       p.own = p.own || [];
       p.units = p.units || {};
     }
+    // Animal profiles become figures; their progress moves along.
+    for (const p of this.profiles()) {
+      if (!OLD_ANIMALS.includes(p.animal)) continue;
+      const taken = new Set(this.profiles().map((x) => x.animal));
+      const key = figureFor(p.animal, taken);
+      if (key !== p.animal) this.move(p.animal, key);
+    }
+    this.save();
+  },
+
+  // A profile under another figure; the active profile stays active.
+  move(from, to) {
+    const p = this.data.profiles[from];
+    delete this.data.profiles[from];
+    p.animal = to;
+    this.data.profiles[to] = p;
+    if (this.data.active === from) this.data.active = to;
+  },
+
+  // The learner chooses another figure; false when another profile has it.
+  changeFigure(key) {
+    if (!PICKABLE.includes(key) || (this.data.profiles[key] && key !== this.data.active)) return false;
+    this.move(this.data.active, key);
+    this.save();
+    return true;
   },
 
   save() {
@@ -126,6 +158,9 @@ const Store = {
     const incoming = file && file.app === 'gwunderfitz' ? file.profile : null;
     if (!incoming || typeof incoming.items !== 'object' || !incoming.items) return false;
     if (!ANIMALS.includes(incoming.animal) || !knownLangs.includes(incoming.lang)) return false;
+    // A file from an animal profile lands on that animal's figure.
+    incoming.animal = OLD_ANIMALS.includes(incoming.animal) && PICKABLE !== OLD_ANIMALS
+      ? PICKABLE[OLD_ANIMALS.indexOf(incoming.animal)] || PICKABLE[0] : incoming.animal;
     const mine = this.data.profiles[incoming.animal];
     // Own words from both sides, and the progress on each of them.
     const own = [...(mine ? mine.own : [])];

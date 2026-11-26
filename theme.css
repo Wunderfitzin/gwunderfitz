@@ -232,7 +232,10 @@ h2 .l1 { text-transform: none; letter-spacing: 0; }
 
 .race-score { background: var(--p2); color: #1d1d1d; }
 
-.pic svg > circle:first-child { fill: #f2f0ea; }
+.pic svg:not(.vp-comic):not(.av) > circle:first-child { fill: #f2f0ea; }
 
 /* The chosen language in the settings */
 .choice.selected { background: var(--lilac-soft); box-shadow: inset 0 0 0 2px var(--p1) !important; }
+
+/* The figure in use, in the settings */
+.animal.current { border-color: var(--p1) !important; background: var(--lilac-soft); }

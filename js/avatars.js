@@ -37,7 +37,7 @@ function avFace({ eyes = 'open', mouth = 'smile', brows = true } = {}) {
 
 // One learner: shirt, skin, hair, face, and things in front (`front`) or behind (`back`).
 function avatar({ bg, skin, shirt, hair = 'short', hairColor = '#2a1d16', face = {}, back = '', front = '', top = '' }) {
-  return `<svg viewBox="0 0 100 100" role="presentation"><circle cx="50" cy="50" r="48" fill="${bg}"/>${back}`
+  return `<svg class="av" viewBox="0 0 100 100" role="presentation"><circle cx="50" cy="50" r="48" fill="${bg}"/>${back}`
     + `<path d="M17 100c2-20 15-30 33-30s31 10 33 30z" fill="${shirt}" ${avOut}/>`
     + `<rect x="44" y="58" width="12" height="13" fill="${skin}" ${avOut}/>`
     + (hair === 'hijab' ? AV_HAIR.hijab(hairColor) : '')
