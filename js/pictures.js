@@ -25,6 +25,8 @@ function drawHair(look, c, dir) {
   if (look === 'beard') return `<path d="M-14-80a14 14 0 0 1 28 0c-5-4-23-4-28 0z" fill="${c.hair}"/><path d="M-13-76c0 18 26 18 26 0-4 5-22 5-26 0z" fill="${c.hair}"/>`;
   if (look === 'scarf') return `<path d="M0-96a17 17 0 0 0-17 17c0 12 4 20 17 22 13-2 17-10 17-22a17 17 0 0 0-17-17zm0 5a11 11 0 0 1 11 12c0 7-4 12-11 12s-11-5-11-12a11 11 0 0 1 11-12z" fill="${c.hair}"/>`;
   if (look === 'bob') return `<path d="M-15-64c-3-40 33-40 30 0h-7c2-10 0-18-4-20-6 3-14 3-19 4-1 6-2 10 0 16z" fill="${c.hair}"/>`;
+  if (look === 'curly') return [[-12, -86], [-7, -92], [0, -94], [7, -92], [12, -86], [-14, -79], [14, -79]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6.5" fill="${c.hair}"/>`).join('');
+  if (look === 'straight') return `<path d="M-15-62c-4-42 34-42 30 0h-5v-23h-20v23z" fill="${c.hair}"/>`;
   if (look === 'child') return `<path d="M-14-78a14 14 0 0 1 28 0c-3-3-5-6-8-6-4 3-14 3-20 6z" fill="${c.hair}"/>`;
   return `<path d="M-14-78c-1-22 29-22 28 0-3-6-6-8-9-8h-10c-3 0-6 2-9 8z" fill="${c.hair}"/>`;
 }

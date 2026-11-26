@@ -42,7 +42,8 @@ function localized(map, code = lang()) {
 
 // A German line with the student's language under it.
 function pair(key, code = lang()) {
-  return [h('span', { class: 'de' }, STRINGS[key].de), localized(STRINGS[key], code)];
+  const same = pickText(STRINGS[key], code).text === STRINGS[key].de;
+  return [h('span', { class: 'de' }, STRINGS[key].de), same ? null : localized(STRINGS[key], code)];
 }
 
 // The student's own correction wins over the built-in translation.
@@ -198,15 +199,30 @@ function renderChooseLanguage() {
 function renderChooseAnimal(code) {
   show(h('main', { class: 'page narrow' },
     brand(),
-    h('h1', { class: 'stack' }, pair('pickAnimal', code)),
+    h('h1', { class: 'stack' }, pair('pickAvatar', code)),
     h('div', { class: 'animals' },
       Store.freeAnimals().map((a) => h('button', {
-        class: 'animal', 'aria-label': a,
+        class: 'animal avatar', 'aria-label': avatarName(a) || a,
         onclick: () => { Store.createProfile(a, code); renderHome(); },
-      }, icon(a))))));
+      }, icon(a), avatarName(a) ? h('span', { class: 'avatar-name' }, avatarName(a)) : null)))));
 }
 
 // ---- Home ----
+
+// «Warum lerne ich das?»: one line in German and the student's language, under a block.
+function whyLine(key) {
+  return h('span', { class: 'why stack' }, pair(key));
+}
+
+// The student's animal greets and says how long today's words take.
+function greeting(planned) {
+  const minutes = Math.max(1, Math.round(planned * 0.6));
+  return h('div', { class: 'greeting' },
+    icon(Store.profile.animal, 'div', 'pic greeting-animal'),
+    h('div', { class: 'greeting-bubble stack' },
+      pair('hello'),
+      planned ? [h('span', { class: 'de greeting-plan' }, fillPlan(STRINGS.todayPlan, planned, minutes).de), localized(fillPlan(STRINGS.todayPlan, planned, minutes))] : null));
+}
 
 function renderHome() {
   editMode = false;
@@ -218,6 +234,7 @@ function renderHome() {
     h('header', { class: 'topbar' },
       brand(),
       h('button', { class: 'animal small', 'aria-label': STRINGS.settings.de, onclick: renderSettings }, icon(Store.profile.animal))),
+    greeting(plan.length),
     Speech.has('de') ? null : h('p', { class: 'notice stack' }, pair('noVoice')),
     plan.length
       ? h('button', { class: 'hero', onclick: () => startSession(plan) },
@@ -234,23 +251,28 @@ function renderHome() {
       return h('button', { class: 'course-link', onclick: () => renderCourse(def) },
         icon(pic, 'span', 'topic-icon'),
         h('span', { class: 'stack' }, pair(def.title)),
+        whyLine(WHY[key]),
         h('span', { class: 'meter', role: 'img', 'aria-label': `${share} %` }, h('span', { style: `width:${share}%` })));
     }),
     h('button', { class: 'course-link', onclick: renderAmazonia },
       icon('🏺', 'span', 'topic-icon'),
       h('span', { class: 'stack' }, pair('amzTitle')),
+      whyLine(WHY.amazonia),
       h('span', { class: 'meter', role: 'img', 'aria-label': `${amzShare()} %` }, h('span', { style: `width:${amzShare()}%` }))),
     h('button', { class: 'course-link', onclick: () => renderOwnWords() },
       icon('📝', 'span', 'topic-icon'),
       h('span', { class: 'stack' }, pair('myWords')),
+      whyLine(WHY.own),
       Store.profile.own.length ? h('span', { class: 'own-count' }, String(Store.profile.own.length)) : null),
     h('h2', { class: 'stack' }, pair('grammar')),
+    h('p', { class: 'why-block' }, whyLine(WHY.grammar)),
     h('div', { class: 'topics' }, GRAMMAR.map((lesson) => h('button', {
       class: 'topic', onclick: () => renderGrammar(lesson, 0, renderHome),
     },
       icon('📐', 'span', 'topic-icon'),
       h('span', { class: 'stack' }, h('span', { class: 'de' }, lesson.title.de), localized(lesson.title))))),
     h('h2', { class: 'stack' }, pair('topics')),
+    h('p', { class: 'why-block' }, whyLine(WHY.topics)),
     h('div', { class: 'topics' }, TOPICS.map(topicCard))));
 }
 
@@ -467,6 +489,7 @@ function startSession(items, back = renderHome, rounds = false) {
     first: items.length,
     right: 0,
     back,
+    restart: () => startSession(items, back, rounds),
   };
   nextStep();
 }
@@ -481,7 +504,7 @@ function startWriting(items, back = renderHome, count = WRITING_WORDS) {
   const queue = WRITING_LEVELS.flatMap((level, i) => shuffle(words).map((item) => ({
     item, level, retry: false, introduced: i > 0 || !!records[item.id], ungraded: true,
   })));
-  session = { queue, index: 0, first: queue.length, right: 0, back };
+  session = { queue, index: 0, first: queue.length, right: 0, back, restart: () => startWriting(items, back, count) };
   nextStep();
 }
 
@@ -516,7 +539,8 @@ function verdict(correct, given) {
     !correct && given != null ? h('div', { class: 'given' },
       h('span', { class: 'stack' }, pair('yourAnswer')),
       h('s', { class: 'given-answer' }, given)) : null,
-    h('p', { class: 'stack feedback-title' }, pair(correct ? 'right' : 'notYet')),
+    h('p', { class: 'stack feedback-title' }, pair(correct ? PRAISE[Math.floor(Math.random() * PRAISE.length)] : 'notYet')),
+    correct ? null : h('p', { class: 'stack help mistakes' }, pair('mistakes')),
   ];
 }
 
@@ -810,6 +834,13 @@ function renderBuild(step) {
     line, bank, check);
 }
 
+// The score screen ends with «Wiederholen» beside «Weiter».
+function doneButtons(repeat, next, nextKey = 'next') {
+  return h('div', { class: 'done-buttons' },
+    h('button', { class: 'choice center', onclick: repeat }, pair('repeat')),
+    h('button', { class: 'primary', onclick: next }, pair(nextKey)));
+}
+
 function renderDone() {
   const total = session.first;
   show(h('main', { class: 'page narrow' },
@@ -817,7 +848,7 @@ function renderDone() {
       icon(Store.profile.animal, 'div', 'pic huge'),
       h('h1', { class: 'stack' }, pair('wellDone')),
       h('p', { class: 'score' }, `${session.right} / ${total} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount))),
-    h('button', { class: 'primary wide stack', onclick: () => session.back() }, pair(session.back === renderHome ? 'home' : 'next'))));
+    doneButtons(session.restart, () => session.back(), session.back === renderHome ? 'home' : 'next')));
   root.querySelector('.primary').focus();
 }
 
@@ -838,15 +869,38 @@ function courseShare(def) {
 }
 
 // Also used as a click handler, so anything that is not a course keeps the current one.
+// Under a section of the verb course: «Warum lerne ich das?» (open where the student is
+// working) and the can-do goals, ticked when their station is done.
+function sectionWhy(part, next) {
+  const key = SECTION_WHY[part.section];
+  if (!key) return null;
+  const goals = SECTION_GOALS[part.section] || [];
+  return h('div', { class: 'section-why' },
+    h('details', { open: part.stations.includes(next) },
+      h('summary', { class: 'stack' }, pair('whyTitle')),
+      h('p', { class: 'stack why-text' }, pair(key))),
+    goals.length ? h('div', { class: 'goals' },
+      h('p', { class: 'stack goals-title' }, pair('canDo')),
+      h('ul', {}, goals.map(([goal, station]) => {
+        const done = Store.profile.verbs[station];
+        return h('li', { class: done ? 'goal done' : 'goal' },
+          h('span', { class: 'goal-mark', 'aria-hidden': 'true' }, done ? '✓' : '○'),
+          h('span', { class: 'stack' }, pair(goal)));
+      }))) : null);
+}
+
 function renderCourse(def) {
   if (def && def.parts) shownCourse = def;
   const { stations, parts, title } = shownCourse;
   const next = stations.find((s) => !Store.profile.verbs[s.id]);
+  const courseKey = Object.keys(COURSES).find((k) => COURSES[k] === shownCourse);
   show(h('main', { class: 'page narrow' },
     h('header', { class: 'topbar' }, h('button', { class: 'text-button', onclick: renderHome }, '← ', STRINGS.back.de), null),
     h('h1', { class: 'stack' }, pair(title)),
+    courseKey ? h('p', { class: 'why-block' }, whyLine(WHY[courseKey])) : null,
     parts.flatMap((part) => [
       h('h2', { class: 'stack' }, pair(part.section)),
+      sectionWhy(part, next),
       h('ol', { class: 'stations' }, part.stations.map((station) => {
         const done = Store.profile.verbs[station.id];
         const kindKey = station.kind === 'practice' ? 'practice' : station.kind;
@@ -939,23 +993,165 @@ function renderNames() {
   first.input.focus();
 }
 
+// A translation bubble for a word or a few words (see introGloss in vorstellung.js).
+function introGlossOf(text) {
+  const whole = introGloss(text, langCodes);
+  if (whole && text.includes(' ')) return whole;
+  const parts = text.split(' ').map((w) => introGloss(w, langCodes)).filter(Boolean);
+  if (!parts.length) return null;
+  if (parts.length === 1) return { ...parts[0], de: text.replace(/[.,!?]/g, '') };
+  const t = Object.fromEntries(langCodes.map((c) => [c, parts.map((g) => pickText(g.t, c).text).join(' ')]));
+  return { de: text, t };
+}
+
+// A sentence whose words show their translation when pointed at or tapped.
+function introTipped(text) {
+  return text.split(' ').map((word, i) => {
+    const gloss = introGloss(word, langCodes);
+    const node = gloss ? h('span', { class: 'gl', tabindex: 0 }, word, glossTip(gloss)) : word;
+    return i ? [' ', node] : node;
+  });
+}
+
+// «Meine Vorstellung»: one question after the other; the German sentence grows below
+// the answer. Buttons or own text; nothing is saved.
+function renderIntroBuilder() {
+  const state = course.intro || (course.intro = { index: 0, chosen: INTRO_STEPS.map(() => []), typed: INTRO_STEPS.map(() => '') });
+  const i = state.index;
+  const step = INTRO_STEPS[i];
+  // The student's own language is offered first; Deutsch is in the sentence already.
+  if (step.id === 'sprechen' && !state.chosen[i].length && !state.typed[i] && INTRO_LANGUAGE_NAMES[lang()] && INTRO_LANGUAGE_NAMES[lang()] !== 'Deutsch') {
+    state.chosen[i] = [INTRO_LANGUAGE_NAMES[lang()]];
+  }
+  const value = () => introAnswer(step, state.chosen[i], state.typed[i]);
+  const filled = () => (step.many ? value().length > 0 : value() !== '');
+  const line = h('p', { class: 'example-line intro-line', 'aria-live': 'polite' });
+  const next = h('button', {
+    class: 'primary wide stack',
+    onclick: () => {
+      if (!filled()) return;
+      if (i + 1 < INTRO_STEPS.length) {
+        state.index += 1;
+        renderIntroBuilder();
+        return;
+      }
+      const answers = INTRO_STEPS.map((s, k) => introAnswer(s, state.chosen[k], state.typed[k]));
+      course.steps.push({ introSummary: INTRO_STEPS.map((s, k) => s.say(answers[k])) });
+      course.queue = introPractice(answers).map((q) => ({ q, retry: false }));
+      course.first = course.queue.length;
+      course.stepIndex += 1;
+      courseNext();
+    },
+  }, pair('next'));
+  const update = () => {
+    line.replaceChildren(...introTipped(filled() ? step.say(value()) : step.say(step.many ? ['…'] : '…')).flat());
+    next.disabled = !filled();
+  };
+  const input = step.type ? h('input', {
+    type: 'text', class: 'answer', lang: 'de', autocomplete: 'off', spellcheck: 'false', maxlength: 40,
+    value: state.typed[i], 'aria-label': step.question,
+    oninput: () => {
+      state.typed[i] = input.value;
+      if (!step.many && input.value.trim()) { state.chosen[i] = []; chips.forEach((c) => c.classList.remove('on')); }
+      update();
+    },
+  }) : null;
+  // A preselected answer that is not among the buttons (e.g. Singhalesisch) gets its own button.
+  const chips = [...new Set([...(step.many ? state.chosen[i] : []), ...(step.pick || [])])].map((option) => {
+    const gloss = introGlossOf(option);
+    const chip = h('button', {
+      class: `chip${state.chosen[i].includes(option) ? ' on' : ''}`, 'aria-pressed': String(state.chosen[i].includes(option)), 'data-option': option,
+      onclick: () => {
+        // On a touch screen there is no pointing: a tap shows the translation for a moment.
+        chips.forEach((c) => c.classList.remove('tip-open'));
+        if (gloss) { chip.classList.add('tip-open'); setTimeout(() => chip.classList.remove('tip-open'), 1800); }
+        if (step.many) {
+          state.chosen[i] = state.chosen[i].includes(option) ? state.chosen[i].filter((x) => x !== option) : [...state.chosen[i], option];
+        } else {
+          state.chosen[i] = [option];
+          state.typed[i] = '';
+          if (input) input.value = '';
+        }
+        chips.forEach((c) => {
+          const on = state.chosen[i].includes(c.dataset.option);
+          c.classList.toggle('on', on);
+          c.setAttribute('aria-pressed', String(on));
+        });
+        update();
+      },
+    }, option, gloss ? glossTip(gloss) : null);
+    return chip;
+  });
+  courseFrame(
+    h('p', { class: 'tag stack' }, pair('introTitle'), ` ${i + 1} / ${INTRO_STEPS.length}`),
+    h('div', { class: 'card' }, emojiPicture(verb(step.verb).pic, 'big'), h('p', { class: 'rule' }, step.question), localized(step.t)),
+    audioButtons(step.question),
+    chips.length ? h('div', { class: 'chips' }, chips) : null,
+    input ? h('label', { class: 'field stack' }, chips.length ? pair('introOwn') : null, input) : null,
+    line,
+    i === 0 ? h('p', { class: 'help stack' }, pair('introNote')) : null,
+    h('div', { class: 'done-buttons' },
+      i > 0 ? h('button', { class: 'choice center', onclick: () => { state.index -= 1; renderIntroBuilder(); } }, pair('back')) : null,
+      next));
+  update();
+  if (input && !chips.length) input.focus();
+  Speech.say(step.question);
+}
+
+// The whole introduction, to listen to and say out loud; each line can be heard alone.
+function renderIntroSummary(lines) {
+  const nextButton = h('button', { class: 'primary wide stack', onclick: () => { course.stepIndex += 1; courseNext(); } }, pair('next'));
+  courseFrame(
+    h('div', { class: 'card intro-card' },
+      h('h2', { class: 'stack' }, pair('introTitle')),
+      h('div', { class: 'intro-text' }, lines.map((text) => h('p', { class: 'intro-sentence', onclick: () => Speech.say(text) }, introTipped(text))))),
+    h('p', { class: 'help stack' }, pair('introListen')),
+    audioButtons(lines.join(' ')),
+    nextButton);
+  nextButton.focus();
+  Speech.say(lines.join(' '));
+}
+
 function emojiPicture(pic, size = 'big') {
   return icon(pic, 'div', `pic ${size}`);
 }
 
-function stemAndEnding(v, form) {
-  const shared = v.id !== 'sein' && form.startsWith(v.stem) ? v.stem : null;
-  if (!shared) return h('strong', { class: 'form-changed' }, form);
-  return h('span', {}, shared, h('strong', { class: 'form-ending' }, form.slice(shared.length)));
+// Each part of a verb form in its own colour (see formParts in verbs.js).
+const MARK_CLASS = { ending: 'form-ending', vowel: 'form-vowel', extra: 'form-extra', short: 'form-short', changed: 'form-changed' };
+const LEGEND = [['vowel', 'legendVowel', 'ä'], ['changed', 'legendChanged', 'bin'], ['extra', 'legendExtra', 'e'], ['short', 'legendShort', 't'], ['ending', 'legendEnding', 'en']];
+
+function markedForm(parts) {
+  return h('span', {}, parts.map((part) => (part.mark ? h('strong', { class: MARK_CLASS[part.mark] }, part.text) : part.text)));
 }
 
+// Rows that are not regular get a tint; a legend explains the colours this table uses.
 function conjugationTable(id) {
   const v = verb(id);
-  return h('table', { class: 'conj' }, h('tbody', {}, TABLE_ROWS.map((row) => {
+  const used = new Set();
+  const rows = TABLE_ROWS.map((row) => {
+    const parts = formParts(v, row.key);
+    parts.forEach((part) => part.mark && used.add(part.mark));
+    const odd = parts.some((part) => part.mark && part.mark !== 'ending');
     const form = conjugate(v, row.key);
-    return h('tr', { onclick: () => Speech.say(`${row.label.split(',')[0]} ${form}`) },
-      h('td', {}, row.label), h('td', {}, stemAndEnding(v, form)));
-  })));
+    return h('tr', { class: odd ? 'odd' : '', onclick: () => Speech.say(`${row.label.split(',')[0]} ${form}`) },
+      h('td', {}, row.label), h('td', {}, markedForm(parts)));
+  });
+  return h('div', { class: 'conj-wrap' },
+    h('table', { class: 'conj' }, h('tbody', {}, rows)),
+    h('ul', { class: 'legend' }, LEGEND.filter(([mark]) => used.has(mark)).map(([mark, key, sample]) => h('li', {},
+      h('strong', { class: `legend-sample ${MARK_CLASS[mark]}` }, sample), h('span', { class: 'stack' }, pair(key))))));
+}
+
+// The vowel change of an irregular verb, big: a → ä, and the du form with it.
+function vowelChange(id) {
+  const v = verb(id);
+  const parts = formParts(v, 'du');
+  const changed = parts.find((part) => part.mark === 'vowel');
+  if (!changed) return null;
+  return h('div', { class: 'vowel-change' },
+    h('span', { class: 'vowel-was' }, changed.was), h('span', { class: 'vowel-arrow', 'aria-hidden': 'true' }, '→'),
+    h('strong', { class: 'form-vowel' }, changed.text),
+    h('p', { class: 'vowel-example' }, `${v.de} → du `, markedForm(parts)));
 }
 
 // A Perfekt sentence with haben/sein and the Partizip II marked: the two ends of the frame.
@@ -996,6 +1192,9 @@ function renderCourseStep(step) {
   const advance = () => { course.stepIndex += 1; courseNext(); };
   const nextButton = h('button', { class: 'primary wide stack', onclick: advance }, pair('next'));
   if (step.names) return renderNames();
+  if (step.introBuilder) return renderIntroBuilder();
+  if (step.race) return renderRace(step.race);
+  if (step.introSummary) return renderIntroSummary(step.introSummary);
   if (step.learn) {
     const { learn } = step;
     courseFrame(
@@ -1025,6 +1224,7 @@ function renderCourseStep(step) {
       localized(rule.t || rule),
       split, examples,
       step.example ? h('p', { class: 'example-line' }, step.example) : null,
+      step.table && /^ur/.test(step.rule) ? vowelChange(step.table) : null,
       step.table ? conjugationTable(step.table) : null,
       step.frame ? perfektLine(step.frame) : null,
       step.ptable ? perfektTable(step.ptable) : null,
@@ -1043,7 +1243,7 @@ function promptFor(q) {
   return h('div', { class: 'card' },
     q.figure ? figurePicture(q.figure) : null,
     q.person ? personPicture(q.person) : null,
-    q.pic && !q.listen ? emojiPicture(q.pic, q.person ? '' : 'big') : null,
+    q.pic && !q.listen && !q.noPicture ? emojiPicture(q.pic, q.person ? '' : 'big') : null,
     q.sentence ? h('p', { class: 'rule' }, q.sentence) : null,
     q.sentenceL1 ? localized(q.sentenceL1) : null,
     q.l1 ? h('span', { class: 'prompt-l1' }, localized(q.l1)) : null,
@@ -1054,6 +1254,10 @@ function renderQuestion(entry) {
   const { q } = entry;
   if (q.kind === 'match') return renderMatch(entry);
   if (q.kind === 'sort') return renderSort(entry);
+  if (q.kind === 'memory') return renderMemory(entry);
+  if (q.kind === 'letters') return renderLetters(entry);
+  if (q.kind === 'build') return renderCourseBuild(entry);
+  if (q.kind === 'table') return renderTableFill(entry);
   const prompt = q.listen ? null : promptFor(q);
   const replay = q.listen ? audioButtons(q.listen) : null;
   if (q.kind === 'type') {
@@ -1063,6 +1267,7 @@ function renderQuestion(entry) {
     courseFrame(
       h('h1', { class: 'stack task' }, pair(q.task)),
       prompt,
+      replay,
       h('form', {
         class: 'type-form',
         onsubmit: (e) => {
@@ -1078,6 +1283,7 @@ function renderQuestion(entry) {
         }, letter))),
         h('button', { type: 'submit', class: 'primary wide stack' }, pair('check'))));
     input.focus();
+    if (q.listen) Speech.say(q.listen);
     return;
   }
   const grid = q.pictures ? 'options pictures' : q.options.length === 2 ? 'options two' : 'options';
@@ -1138,6 +1344,217 @@ function renderMatch(entry) {
     h('div', { class: 'match' }, h('div', { class: 'options' }, leftButtons), h('div', { class: 'options' }, rightButtons)));
 }
 
+// The whole conjugation table to fill in. With help, the part shared with the
+// infinitive stands before each field. All rows right counts as right.
+function renderTableFill(entry) {
+  const { q } = entry;
+  const fields = q.rows.map((row) => h('input', {
+    type: 'text', class: 'answer table-answer', lang: 'de', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
+    'aria-label': row.label,
+  }));
+  const check = () => {
+    const results = q.rows.map((row, i) => normalise(row.given + fields[i].value) === normalise(row.form));
+    results.forEach((ok, i) => fields[i].classList.toggle('wrong', !ok));
+    const firstWrong = results.indexOf(false);
+    const given = firstWrong < 0 ? null : `${q.rows[firstWrong].label.split(',')[0]} ${q.rows[firstWrong].given}${fields[firstWrong].value.trim()}`;
+    setTimeout(() => courseAnswer(entry, firstWrong < 0, given), firstWrong < 0 ? 200 : 900);
+  };
+  courseFrame(
+    h('h1', { class: 'stack task' }, pair(q.task)),
+    h('div', { class: 'card' }, emojiPicture(q.pic), h('span', { class: 'word' }, q.verbName), localized(q.feedbackL1)),
+    h('form', { class: 'type-form', onsubmit: (e) => { e.preventDefault(); check(); } },
+      h('table', { class: 'conj fill' }, h('tbody', {}, q.rows.map((row, i) => h('tr', {},
+        h('td', {}, row.label),
+        h('td', {}, h('span', { class: 'table-given' }, row.given), fields[i]))))),
+      h('div', { class: 'letters' }, ['ä', 'ö', 'ü'].map((letter) => h('button', {
+        type: 'button', class: 'letter',
+        onclick: () => {
+          const field = fields.find((f) => f === document.activeElement) || fields[0];
+          field.setRangeText(letter, field.selectionStart, field.selectionEnd, 'end');
+          field.focus();
+        },
+      }, letter))),
+      h('button', { type: 'submit', class: 'primary wide stack' }, pair('check'))));
+  fields[0].focus();
+}
+
+// The verb race: as many right answers as possible in RACE_SECONDS. Quick choices,
+// the next question at once; the best score is kept.
+function renderRace(section) {
+  const bestKey = `best-${section}`;
+  const best = Number(Store.profile.verbs[bestKey]) || 0;
+  const start = h('button', { class: 'primary wide stack', onclick: () => runRace(section) }, pair('raceStart'));
+  courseFrame(
+    h('div', { class: 'card' },
+      h('div', { class: 'race-clock', 'aria-hidden': 'true' }, '⏱'),
+      h('p', { class: 'rule' }, STRINGS.raceTask.de), localized(STRINGS.raceTask),
+      best ? h('p', { class: 'stack' }, pair('raceBest'), h('strong', { class: 'race-best' }, String(best))) : null),
+    start);
+  start.focus();
+}
+
+function runRace(section) {
+  const maker = RACE_MAKERS[section];
+  const end = Date.now() + RACE_SECONDS * 1000;
+  let right = 0;
+  const bar = h('span', { style: 'width:100%' });
+  const score = h('strong', { class: 'race-score' }, '0');
+  const board = h('div', { class: 'race-board' });
+  const timer = setInterval(() => {
+    const left = Math.max(0, end - Date.now());
+    bar.style.width = `${(left / (RACE_SECONDS * 1000)) * 100}%`;
+    if (!left) finish();
+  }, 200);
+  const ask = () => {
+    const q = maker(Math.random);
+    board.replaceChildren(
+      promptFor({ ...q, listen: null, l1: q.l1, noPicture: false }),
+      h('div', { class: q.options.length === 2 ? 'options two' : 'options' }, q.options.map((option) => h('button', {
+        class: 'option',
+        onclick: (e) => {
+          const ok = option === q.answer;
+          if (ok) right += 1;
+          score.textContent = String(right);
+          e.currentTarget.classList.add(ok ? 'race-ok' : 'wrong');
+          setTimeout(ask, ok ? 150 : 600);
+        },
+      }, option))));
+  };
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearInterval(timer);
+    const key = `best-${section}`;
+    const record = right > (Number(Store.profile.verbs[key]) || 0);
+    if (record) Store.profile.verbs[key] = right;
+    Store.profile.verbs[course.station.id] = true;
+    Store.save();
+    show(h('main', { class: 'page narrow' },
+      h('div', { class: 'card done' },
+        icon(Store.profile.animal, 'div', 'pic huge'),
+        h('h1', { class: 'stack' }, pair(record ? 'raceNew' : PRAISE[Math.floor(Math.random() * PRAISE.length)])),
+        h('p', { class: 'score' }, `${right} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount)),
+        h('p', { class: 'stack' }, pair('raceBest'), h('strong', { class: 'race-best' }, String(Math.max(right, Number(Store.profile.verbs[key]) || 0))))),
+      doneButtons(() => startStation(course.station), renderCourse)));
+    root.querySelector('.primary').focus();
+  }
+  show(h('main', { class: 'page narrow session' },
+    h('header', { class: 'session-bar' },
+      h('button', { class: 'round', 'aria-label': STRINGS.home.de, onclick: () => { done = true; clearInterval(timer); renderCourse(); } }, '✕'),
+      h('span', { class: 'meter grow race-meter' }, bar),
+      score),
+    board));
+  ask();
+}
+
+// Memory: every card face down, two open at a time. A pair stays open, the others turn
+// back. Mistakes belong to the game, so a finished game counts as right.
+function renderMemory(entry) {
+  const { q } = entry;
+  const back = () => h('span', { class: 'memory-back', 'aria-hidden': 'true' }, '?');
+  const face = (card) => (card.pic ? emojiPicture(card.pic, '') : h('span', { class: 'memory-text' }, card.text));
+  let open = [];
+  let found = 0;
+  let busy = false;
+  const turn = (card, button) => {
+    if (busy || button.classList.contains('open')) return;
+    button.classList.add('open');
+    button.replaceChildren(face(card));
+    button.setAttribute('aria-label', card.text || card.say);
+    open.push({ card, button });
+    if (open.length < 2) {
+      if (card.text) Speech.say(card.text);
+      return;
+    }
+    const [a, b] = open;
+    open = [];
+    if (a.card.pair === b.card.pair) {
+      [a, b].forEach((x) => { x.button.classList.add('found'); x.button.disabled = true; });
+      Speech.say(a.card.say);
+      found += 1;
+      if (found * 2 === q.cards.length) setTimeout(() => courseAnswer(entry, true), 900);
+      return;
+    }
+    if (card.text) Speech.say(card.text);
+    busy = true;
+    setTimeout(() => {
+      [a, b].forEach((x) => { x.button.classList.remove('open'); x.button.replaceChildren(back()); x.button.setAttribute('aria-label', '?'); });
+      busy = false;
+    }, 1100);
+  };
+  const cards = q.cards.map((card) => {
+    const button = h('button', { class: 'memory-card', 'aria-label': '?', onclick: () => turn(card, button) }, back());
+    return button;
+  });
+  courseFrame(
+    h('h1', { class: 'stack task' }, pair('memory')),
+    q.verbName ? h('div', { class: 'card' }, emojiPicture(q.pic), h('span', { class: 'word' }, q.verbName), localized(q.feedbackL1)) : null,
+    h('div', { class: `memory-grid${q.cards.length > 6 ? ' four' : ''}` }, cards));
+}
+
+// A word from its shuffled letters: tap them in order; tap a placed letter to give it back.
+function renderLetters(entry) {
+  const { q } = entry;
+  const letters = [...q.answer].map((text, id) => ({ text, id }));
+  let tiles = shuffle(letters);
+  while (tiles.length > 1 && tiles.map((t) => t.text).join('') === q.answer) tiles = shuffle(letters);
+  const placed = [];
+  const slotRow = h('div', { class: 'slots', dir: 'ltr' });
+  const bank = h('div', { class: 'tile-bank', dir: 'ltr' });
+  const check = h('button', {
+    class: 'primary wide stack', disabled: true,
+    onclick: () => {
+      const word = placed.map((t) => t.text).join('');
+      courseAnswer(entry, word === q.answer, word);
+    },
+  }, pair('check'));
+  const draw = () => {
+    slotRow.replaceChildren(...letters.map((_, i) => {
+      const tile = placed[i];
+      return h('button', {
+        class: tile ? 'slot taken' : 'slot', 'aria-label': tile ? tile.text : `${i + 1}`,
+        onclick: () => { if (tile) { placed.splice(i, 1); draw(); } },
+      }, tile ? tile.text : '');
+    }));
+    bank.replaceChildren(...tiles.map((tile) => (placed.includes(tile)
+      ? h('span', { class: 'tile letter-tile ghost', 'aria-hidden': 'true' }, tile.text)
+      : h('button', { class: 'tile letter-tile', onclick: () => { placed.push(tile); draw(); } }, tile.text))));
+    check.disabled = placed.length !== letters.length;
+  };
+  draw();
+  courseFrame(h('h1', { class: 'stack task' }, pair(q.task)), promptFor(q), slotRow, bank, check);
+}
+
+// A sentence from its shuffled words, as in the topics, inside the verb course.
+function renderCourseBuild(entry) {
+  const { q } = entry;
+  const words = q.words.map((text, id) => ({ text, id }));
+  let tiles = shuffle(words);
+  while (tiles.length > 1 && tiles.every((t, i) => t.id === i)) tiles = shuffle(words);
+  const placed = [];
+  const line = h('div', { class: 'sentence-line' });
+  const bank = h('div', { class: 'tile-bank' });
+  const check = h('button', {
+    class: 'primary wide stack', disabled: true,
+    onclick: () => {
+      const built = placed.map((t) => t.text).join(' ');
+      courseAnswer(entry, built === q.answer, built);
+    },
+  }, pair('check'));
+  const draw = () => {
+    line.replaceChildren(...placed.map((tile) => h('button', {
+      class: 'tile', onclick: () => { placed.splice(placed.indexOf(tile), 1); draw(); },
+    }, tile.text)));
+    bank.replaceChildren(...tiles.map((tile) => (placed.includes(tile)
+      ? h('span', { class: 'tile ghost', 'aria-hidden': 'true' }, tile.text)
+      : h('button', { class: 'tile', onclick: () => { placed.push(tile); draw(); } }, tile.text))));
+    check.disabled = placed.length !== tiles.length;
+  };
+  draw();
+  courseFrame(h('h1', { class: 'stack task' }, pair('build')), promptFor(q), line, bank, check);
+}
+
 // Cards one after the other into two baskets. A wrong tap still files the card,
 // but in the right basket and marked, so the student sees where it belongs.
 function renderSort(entry) {
@@ -1168,7 +1585,7 @@ function renderSort(entry) {
   courseFrame(
     h('h1', { class: 'stack task' }, pair(q.task)),
     card,
-    h('div', { class: 'sort-baskets' }, baskets.map((basket) => {
+    h('div', { class: `sort-baskets${baskets.length === 3 ? ' three' : ''}` }, baskets.map((basket) => {
       const button = h('button', { class: 'option basket stack', onclick: () => file(basket, button) }, pair(basket.key));
       return h('div', { class: 'basket-col' }, button, basket.list);
     })));
@@ -1207,8 +1624,7 @@ function renderStationDone() {
       icon(Store.profile.animal, 'div', 'pic huge'),
       h('h1', { class: 'stack' }, pair(isTest ? (passed ? 'passed' : 'failed') : 'wellDone')),
       first ? h('p', { class: 'score' }, `${right} / ${first} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount)) : null),
-    passed ? null : h('button', { class: 'choice stack', onclick: () => startStation(station) }, pair('practice')),
-    h('button', { class: 'primary wide stack', onclick: renderCourse }, pair('next'))));
+    doneButtons(() => startStation(station), renderCourse)));
   root.querySelector('.primary').focus();
 }
 
@@ -1349,7 +1765,7 @@ function renderAmzQuiz(index, right) {
         icon(Store.profile.animal, 'div', 'pic huge'),
         h('h1', { class: 'stack' }, pair('wellDone')),
         h('p', { class: 'score' }, `${right} / ${AMZ_QUIZ.length} `, STRINGS.rightCount.de, ' · ', localized(STRINGS.rightCount))),
-      h('button', { class: 'primary wide stack', onclick: renderAmazonia }, pair('next')));
+      doneButtons(() => renderAmzQuiz(0, 0), renderAmazonia));
   }
   const [word, answer] = AMZ_QUIZ[index];
   const next = h('button', { class: 'primary wide stack', hidden: true }, pair('next'));
@@ -1498,7 +1914,9 @@ function renderSettings(message) {
             renderStart();
           }
         },
-      }, STRINGS.deleteProfile.de))));
+      }, STRINGS.deleteProfile.de)),
+    h('p', { class: 'help' }, 'Verbbilder: Motive nach den Piktogrammen von ARASAAC (Sergio Palao, Gobierno de Aragón), ',
+      h('a', { href: 'https://creativecommons.org/licenses/by-nc-sa/4.0/', target: '_blank', rel: 'noopener' }, 'CC BY-NC-SA 4.0'), '.')));
 }
 
 // ---- Author screen (index.html?autor), German only and not linked from the app ----
@@ -1507,7 +1925,7 @@ function recordingSections() {
   return [
     ...GRAMMAR.map((lesson) => ({ title: `Grammatik: ${lesson.title.de}`, texts: lesson.cards.map((card) => card.text.de) })),
     ...TOPICS.map((topic) => ({ title: topic.title.de, texts: topicItems(topic.id).map(fullGerman) })),
-    { title: 'Verben: Regeln', texts: RULE_KEYS.map((key) => RULES[key].de) },
+    { title: 'Verben: Regeln', texts: Object.values(RULES).map((rule) => rule.de) },
     { title: 'Perfekt: Regeln', texts: PF_RULE_KEYS.map((key) => PF_RULES[key].de) },
     { title: 'Perfekt: Partizip II', texts: PF_VERBS.map(pfSaid) },
     { title: 'Gefühle: Regeln', texts: GF_RULE_KEYS.map((key) => GF_RULES[key].de) },

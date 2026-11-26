@@ -1,0 +1,238 @@
+/* Gwunderfitz design «Schweiz Pastell», loaded after styles.css.
+   Swiss graphic design (Helvetica, straight edges, numbered tiles) in pastel colours:
+   white tiles on warm paper, an even dotted line on top in each tile's colour and the
+   whole dotted frame when pointed at, round number marks, no black surfaces.
+   Always light, also when the device is in dark mode. */
+
+:root, :root:not([data-theme="light"]) {
+  --paper: #f7f5f0;
+  --surface: #ffffff;
+  --ink: #000000;
+  --muted: #555555;
+  --line: #000000;
+  --brand: #6f5bd8;
+  --brand-ink: #ffffff;
+  --accent: #6f5bd8;
+  --good: #e3f7ec;
+  --good-ink: #1d1d1d;
+  --again: #fff0e6;
+  --again-ink: #1d1d1d;
+  --der: #0050c8;
+  --die: #d22f2f;
+  --das: #00843d;
+  --radius: 0;
+  /* The pastel set: one per tile, in this order */
+  --p1: #b9a6ff;
+  --p2: #ffb08a;
+  --p3: #7fd8a8;
+  --p4: #86c3ff;
+  --p5: #f2cf4a;
+  --p6: #ff9cc0;
+  --lilac-soft: #ece6ff;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, "Noto Sans", "Noto Sans Ethiopic", "Noto Sans Arabic", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Swiss type: big tight titles, section labels with a black rule above */
+h1 { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.045em; line-height: 0.95; }
+
+h2 {
+  margin-top: 28px;
+  padding-top: 8px;
+  border-top: 3px solid #000;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h2 .l1 { text-transform: none; letter-spacing: 0; }
+
+.brand { font-weight: 700; letter-spacing: -0.04em; }
+
+.brand::after { content: ' ■'; color: var(--accent); font-size: 0.7em; }
+
+/* Straight edges everywhere; round number marks are set again below */
+* { border-radius: 0 !important; }
+
+/* Cards and the greeting: open, separated by thin lines */
+.card, .greeting-bubble, .section-why { border: none !important; box-shadow: none !important; background: transparent; padding-left: 0; padding-right: 0; }
+
+.card { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; }
+
+.greeting-bubble::before { display: none; }
+
+.greeting-bubble > .de:first-child { font-size: 1.4rem; letter-spacing: -0.03em; }
+
+.greeting-plan { color: var(--accent); }
+
+/* Answers and fields: a thin black outline */
+.option, .choice, .answer, .chip, .tile, .slot, .letter, .memory-card, .round {
+  border: 1.5px solid #000 !important;
+  box-shadow: none !important;
+  background: #fff;
+}
+
+.option:hover, .choice:hover, .chip:hover { background: var(--lilac-soft); color: #1d1d1d; }
+
+.option.chosen, .chip.on { background: var(--lilac-soft); color: #1d1d1d; }
+
+.option.wrong { background: var(--die); color: #fff; }
+
+/* Tiles: home courses, topics, today's practice and profile figures. White on paper, a
+   dotted line on top in the tile's colour, the whole dotted frame when pointed at. */
+.course-link, .topic, .hero, .animal {
+  border: 4px dotted transparent !important;
+  border-top-color: var(--tile) !important;
+  box-shadow: none !important;
+  background: #fff;
+}
+
+.course-link:hover, .topic:hover, .hero:hover, .animal:hover { border-color: var(--tile) !important; background: #fffdf9; }
+
+.course-link:nth-of-type(6n+1), .topic:nth-child(6n+1) { --tile: var(--p1); }
+.course-link:nth-of-type(6n+2), .topic:nth-child(6n+2) { --tile: var(--p2); }
+.course-link:nth-of-type(6n+3), .topic:nth-child(6n+3) { --tile: var(--p3); }
+.course-link:nth-of-type(6n+4), .topic:nth-child(6n+4) { --tile: var(--p4); }
+.course-link:nth-of-type(6n+5), .topic:nth-child(6n+5) { --tile: var(--p5); }
+.course-link:nth-of-type(6n), .topic:nth-child(6n) { --tile: var(--p6); }
+
+.hero, .animal { --tile: var(--p1); }
+
+.animal { border-top-color: transparent !important; }
+
+.animal.small { border: none !important; border-radius: 50% !important; }
+
+/* Home: the courses in a grid of numbered tiles */
+.page { counter-reset: course; }
+
+.page:has(.course-link) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 14px; }
+
+.page:has(.course-link) > :not(.course-link) { grid-column: 1 / -1; }
+
+@media (max-width: 620px) {
+  .page:has(.course-link) { grid-template-columns: 1fr; }
+}
+
+.course-link {
+  counter-increment: course;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 190px;
+  padding: 16px 16px 14px;
+}
+
+/* The number in a round mark of the tile's colour */
+.course-link::before {
+  content: counter(course, decimal-leading-zero);
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50% !important;
+  background: var(--tile);
+  color: #222;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.course-link .topic-icon { display: none; }
+
+.course-link > .stack:not(.why) > .de { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.03em; }
+
+/* The «why» on a tile: short and quiet */
+.course-link .why .de, .course-link .why .l1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.course-link .why .de { color: #333; font-weight: 400; font-size: 0.92rem; }
+
+.course-link .why .l1 { -webkit-line-clamp: 2; font-size: 0.8rem; }
+
+.course-link .own-count { align-self: flex-start; background: var(--tile); color: #1d1d1d; }
+
+.meter { height: 3px; background: #eeebe4; }
+
+.meter > span { background: var(--accent); }
+
+.course-link .meter { margin-top: auto; height: 5px; }
+
+.topics { gap: 10px; }
+
+/* Today's practice: a tile with its count in a round lilac mark */
+.hero { color: #1d1d1d; padding: 22px 20px; }
+
+.hero-text { font-size: 2rem; font-weight: 700; letter-spacing: -0.04em; }
+
+.hero .l1 { color: #1d1d1d; opacity: 0.65; }
+
+.hero-count { border-radius: 50% !important; background: var(--p1); color: #1d1d1d; font-weight: 700; }
+
+/* Main buttons: soft lilac with dark writing */
+.primary { border: none; background: #cbbcff; color: #1d1d1d; box-shadow: none; font-weight: 700; }
+
+.primary .l1 { color: #1d1d1d; opacity: 0.65; }
+
+.primary:disabled { background: #d9d6ce; }
+
+/* The verb course list */
+.station { border: none !important; border-bottom: 1px solid #000 !important; box-shadow: none !important; background: transparent; padding-left: 0; }
+
+.station.next { background: transparent; }
+
+.station-mark { color: #000; }
+
+.station.next .station-mark { background: var(--p2); color: #222; }
+
+.station-next { color: #c2532b; font-weight: 700; }
+
+.tag { color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; }
+
+.section-why summary { color: var(--accent); }
+
+.goal.done { color: #000; }
+
+.goal.done .goal-mark { background: var(--p3); color: #1d1d1d; text-align: center; }
+
+/* Feedback: mint when right, peach when not yet */
+.feedback.good { border: none; background: var(--good); }
+
+.feedback.again { border: none; background: var(--again); animation: none; }
+
+.good .mark { background: var(--p3); color: #1d1d1d; }
+
+.again .mark { background: var(--p2); color: #1d1d1d; }
+
+/* Games and tables */
+.memory-card { background: var(--lilac-soft); color: var(--accent); }
+
+.memory-card.open { background: #fff; color: #000; }
+
+.memory-card.found { background: var(--good); color: #1d1d1d; }
+
+.form-ending { color: var(--accent); }
+
+.form-vowel { background: #f7e7a4; color: #1d1d1d; }
+
+.form-changed { background: #ffd6e5; color: #1d1d1d; }
+
+.conj tr.odd td { background: #f4f2ec; }
+
+.race-score { background: var(--p2); color: #1d1d1d; }
+
+.pic svg > circle:first-child { fill: #f2f0ea; }
+
+/* The chosen language in the settings */
+.choice.selected { background: var(--lilac-soft); box-shadow: inset 0 0 0 2px var(--p1) !important; }

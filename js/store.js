@@ -1,6 +1,9 @@
-// Profiles and progress, kept only in this browser. Students are identified by
-// an animal picture, not a name, so no personal data is stored.
-const ANIMALS = ['🦊', '🐻', '🐼', '🦉', '🐢', '🦁', '🐸', '🐙', '🦋', '🐝', '🐧', '🦔'];
+// Profiles and progress, kept only in this browser. Learners are identified by a
+// comic figure (avatars.js), not a name, so no personal data is stored. Profiles made
+// with the earlier animals keep working; new profiles choose a figure.
+const OLD_ANIMALS = ['🦊', '🐻', '🐼', '🦉', '🐢', '🦁', '🐸', '🐙', '🦋', '🐝', '🐧', '🦔'];
+const PICKABLE = typeof AVATAR_KEYS !== 'undefined' ? AVATAR_KEYS : OLD_ANIMALS;
+const ANIMALS = [...PICKABLE, ...OLD_ANIMALS];
 const STORE_KEY = 'gwunderfitz:v1';
 const MAX_FIX_LENGTH = 200;
 
@@ -48,7 +51,7 @@ const Store = {
 
   freeAnimals() {
     const taken = new Set(this.profiles().map((p) => p.animal));
-    return ANIMALS.filter((a) => !taken.has(a));
+    return PICKABLE.filter((a) => !taken.has(a));
   },
 
   createProfile(animal, lang) {

@@ -131,6 +131,10 @@ h2 { font-size: 1.1rem; margin-top: 12px; }
 
 .wide { width: 100%; margin-top: auto; }
 
+.done-buttons { display: flex; gap: 10px; width: 100%; margin-top: auto; }
+
+.done-buttons > button { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
 .round {
   width: 52px;
   height: 52px;
@@ -436,7 +440,37 @@ h2 { font-size: 1.1rem; margin-top: 12px; }
 
 .form-ending { color: var(--accent); }
 
-.form-changed { color: var(--die); }
+.form-changed { border-radius: 5px; background: rgb(192 48 63 / 12%); padding: 0 3px; color: var(--die); }
+
+/* What is not regular: the changed vowel on a yellow marker, the extra e underlined,
+   du with only -t in a dashed box. Rows with such a form are tinted. */
+.form-vowel { border-radius: 5px; background: rgb(242 193 78 / 60%); padding: 0 2px; color: #5b2390; }
+
+.form-extra { color: var(--das); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+
+.form-short { border-radius: 4px; outline: 2px dashed var(--accent); outline-offset: 1px; color: var(--accent); }
+
+.conj tr.odd td { background: rgb(242 193 78 / 14%); }
+
+.conj-wrap { display: flex; flex-direction: column; align-items: center; }
+
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.9rem; }
+
+.legend li { display: flex; align-items: center; gap: 8px; text-align: start; }
+
+.legend-sample { min-width: 1.6em; font-size: 1.1rem; text-align: center; }
+
+.vowel-change { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 12px; margin-top: 8px; font-size: 2.4rem; font-weight: 800; }
+
+.vowel-was { color: var(--muted); }
+
+.vowel-arrow { color: var(--accent); }
+
+.vowel-example { width: 100%; margin: 0; font-size: 1.15rem; font-weight: 600; text-align: center; }
+
+@media (prefers-color-scheme: dark) {
+  .form-vowel { background: rgb(242 193 78 / 30%); color: var(--adj); }
+}
 
 .split { font-size: 1.5rem; font-weight: 600; }
 
@@ -731,7 +765,41 @@ button.slot.taken { border-style: solid; background: var(--good); color: var(--i
 
 .sort-baskets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
+.sort-baskets.three { grid-template-columns: repeat(3, 1fr); }
+
 .basket-col { display: flex; flex-direction: column; gap: 6px; }
+
+/* Verbs: memory cards, face down in a grid */
+.memory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.memory-grid.four { grid-template-columns: repeat(4, 1fr); }
+
+.memory-card {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid var(--brand);
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--brand-ink);
+  padding: 4px;
+  font-weight: 700;
+}
+
+.memory-card.open { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+.memory-card.found { background: var(--good); color: var(--good-ink); border-color: var(--good-ink); }
+
+.memory-card:disabled { opacity: 1; cursor: default; }
+
+.memory-back { font-size: 1.8rem; }
+
+.memory-text { font-size: 1.05rem; overflow-wrap: anywhere; }
+
+.memory-card .pic { width: 80%; }
+
+.memory-card .pic svg { width: 100%; }
 
 .option.basket { min-height: 64px; }
 
@@ -978,3 +1046,113 @@ button.slot.taken { border-style: solid; background: var(--good); color: var(--i
 .amz-hero { margin: 0 0 16px; overflow: hidden; border-radius: var(--radius); box-shadow: var(--shadow); }
 
 .amz-hero img { display: block; width: 100%; height: clamp(180px, 42vw, 300px); object-fit: cover; }
+
+/* Meine Vorstellung: answer buttons, the growing sentence, the finished text */
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+.chip { position: relative; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); padding: 8px 14px; font-weight: 700; }
+
+.chip.on { border-color: var(--brand); background: var(--brand); color: var(--brand-ink); }
+
+.intro-line { font-size: 1.3rem; text-align: center; }
+
+.intro-card { align-items: stretch; }
+
+.intro-text { display: flex; flex-direction: column; gap: 6px; }
+
+.intro-sentence { border: none; border-radius: 10px; background: var(--paper); padding: 8px 12px; font-size: 1.2rem; font-weight: 700; text-align: start; }
+
+/* Answer buttons show their translation like the words of a text */
+.chip:hover .gl-tip, .chip:focus-visible .gl-tip, .chip.tip-open .gl-tip { display: flex; color: var(--ink); font-weight: 400; }
+
+.intro-sentence { margin: 0; cursor: pointer; }
+
+.intro-line .gl, .intro-sentence .gl { cursor: help; }
+
+/* Motivation: the animal's greeting, «why» lines, can-do goals */
+.greeting { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+
+.greeting-animal { flex: none; width: 64px; }
+
+.greeting-animal svg { width: 100%; }
+
+.greeting-bubble {
+  position: relative;
+  flex: 1;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
+.greeting-bubble::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--line);
+  border-left: 2px solid var(--line);
+  background: var(--surface);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.greeting-plan { margin-top: 4px; color: var(--brand); }
+
+.why { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; font-weight: 400; }
+
+.why .de { color: var(--ink); font-weight: 600; }
+
+.why-block { margin: -4px 0 12px; }
+
+.section-why { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; border-radius: var(--radius); background: var(--surface); padding: 12px 14px; }
+
+.section-why summary { cursor: pointer; color: var(--brand); font-weight: 700; }
+
+.why-text { margin: 8px 0 0; line-height: 1.5; }
+
+.why-text .de { font-weight: 600; }
+
+.goals-title { margin: 0 0 4px; font-weight: 700; }
+
+.goals ul { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
+.goal { display: flex; align-items: flex-start; gap: 8px; color: var(--muted); }
+
+.goal.done { color: var(--good-ink); font-weight: 700; }
+
+.goal-mark { width: 1.2em; font-weight: 800; }
+
+.mistakes { margin: 0; font-size: 0.95rem; }
+
+/* Levels: the table to fill in and the verb race */
+.conj.fill td { cursor: default; vertical-align: middle; }
+
+.table-given { font-weight: 700; }
+
+.table-answer { width: 8em; padding: 6px 8px; font-size: 1.1rem; text-align: start; }
+
+.table-answer.wrong { border-color: var(--die); background: var(--again); }
+
+.race-clock { font-size: 3rem; }
+
+.race-best { margin-left: 6px; font-size: 1.4rem; color: var(--brand); }
+
+.race-score { min-width: 2.2em; border-radius: 999px; background: var(--brand); color: var(--brand-ink); padding: 4px 10px; text-align: center; font-size: 1.2rem; }
+
+.race-meter span { transition: width 0.2s linear; }
+
+.race-board { display: flex; flex-direction: column; gap: 12px; }
+
+.option.race-ok { border-color: var(--good-ink); background: var(--good); }
+
+/* Comic figures as profile pictures, with their name */
+.animal.avatar { display: flex; flex-direction: column; align-items: center; gap: 4px; aspect-ratio: auto; padding: 8px 6px; }
+
+.animal.avatar .ico { width: 100%; }
+
+.avatar-name { font-size: 0.78rem; font-weight: 700; line-height: 1.15; text-align: center; }
+
+.animals:has(.avatar) { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }

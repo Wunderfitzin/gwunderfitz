@@ -51,4 +51,9 @@ for (const [code, block] of Object.entries(stringBlocks)) {
   Object.keys(STRINGS).forEach((key, i) => { STRINGS[key][code] = texts[i]; });
 }
 
+// Added after the translation blocks, so it carries every language itself.
+Object.assign(STRINGS, {
+  repeat: { de: 'Wiederholen', ar: 'أعد التمرين', prs: 'دوباره تمرین کن', ps: 'بیا تمرین وکړه', om: 'Irra deebi\'i', ti: 'ደጊምኩም ስርሑ', so: 'Ku celi', si: 'නැවත කරන්න', ckb: 'دووبارە بکەرەوە', en: 'Repeat', fr: 'Recommencer', tr: 'Tekrarla' },
+});
+
 if (typeof module !== 'undefined') module.exports = { STRINGS };
